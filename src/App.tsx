@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { 
   PawPrint, 
   RotateCcw, 
@@ -14,7 +16,14 @@ import {
   Star,
   Compass,
   ChevronDown,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  LogOut,
+  CheckCircle2,
+  Loader2,
+  Venus,
+  Mars,
+  Infinity as InfinityIcon
 } from 'lucide-react';
 import { 
   QUESTIONS, 
@@ -22,19 +31,93 @@ import {
   ZODIAC_DATA, 
   WU_XING_DATA, 
   PAST_LIFE_DATA,
-  BREED_DATA
+  BREED_DATA,
+  CAT_BREED_DATA,
+  GENDER_LABELS
 } from './data';
 
 type Step = 'home' | 'quiz' | 'result';
 
+const AUTH_KEY = 'petmbti_auth';
+const CODE = '1234';
+
+function AuthGate({ onAuth }: { onAuth: () => void }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === CODE) {
+      localStorage.setItem(AUTH_KEY, 'true');
+      onAuth();
+    } else {
+      setError('验证码错误');
+      setTimeout(() => setError(''), 2000);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#FDFCF8] px-6">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-sm bg-white p-8 rounded-[2.5rem] shadow-2xl border-4 border-white text-center"
+      >
+        <div className="w-16 h-16 bg-[#FFE66D] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+          <Lock size={32} className="text-white" />
+        </div>
+        <h2 className="text-2xl font-black mb-2">请输入邀请码</h2>
+        <p className="text-gray-400 mb-6 text-sm font-medium">请输入您收到的访问邀请码</p>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="password"
+            placeholder="请输入邀请码"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={`w-full px-6 py-4 bg-gray-50 border-2 rounded-2xl outline-none transition-all text-center text-xl font-black tracking-[0.5em] ${
+              error ? 'border-red-400 animate-shake' : 'border-transparent focus:border-[#FFE66D]'
+            }`}
+          />
+          {error && <p className="text-red-500 text-xs font-bold">{error}</p>}
+          <button
+            type="submit"
+            className="w-full py-4 bg-[#2D2D2D] text-white rounded-2xl font-black text-lg shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            进入
+          </button>
+        </form>
+        <p className="mt-6 text-[10px] text-gray-300 font-bold">验证成功后将在当前设备保持访问权限</p>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [step, setStep] = useState<Step>('home');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(new Array(QUESTIONS.length).fill(null));
   const [petName, setPetName] = useState('');
   const [petBirthday, setPetBirthday] = useState('');
   const [petType, setPetType] = useState('dog');
-  const [selectedBreedId, setSelectedBreedId] = useState('other');
+  const [petGender, setPetGender] = useState('male');
+  const [selectedBreedId, setSelectedBreedId] = useState('other_dog');
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const auth = localStorage.getItem(AUTH_KEY);
+    if (auth === 'true') {
+      setIsAuthorized(true);
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem(AUTH_KEY);
+    setIsAuthorized(false);
+  };
 
   const handleStart = () => {
     if (!petName.trim()) {
@@ -96,9 +179,27 @@ export default function App() {
         if (breed.modifiers.TF) s.TF += breed.modifiers.TF;
         if (breed.modifiers.JP) s.JP += breed.modifiers.JP;
       }
+    } else if (petType === 'cat') {
+      const breed = CAT_BREED_DATA.find(b => b.id === selectedBreedId);
+      if (breed) {
+        if (breed.modifiers.EI) s.EI += breed.modifiers.EI;
+        if (breed.modifiers.SN) s.SN += breed.modifiers.SN;
+        if (breed.modifiers.TF) s.TF += breed.modifiers.TF;
+        if (breed.modifiers.JP) s.JP += breed.modifiers.JP;
+      }
     }
+
+    // Gender modifiers (Scheme A: Mild weighting)
+    if (petGender === 'male') {
+      s.EI += 0.3; // Slightly more energetic
+      s.JP += 0.2; // Slightly more territorial/structured
+    } else if (petGender === 'female') {
+      s.TF -= 0.3; // Slightly more empathetic/sensitive
+      s.SN -= 0.2; // Slightly more intuitive
+    }
+
     return s;
-  }, [answers, petType, selectedBreedId]);
+  }, [answers, petType, selectedBreedId, petGender]);
 
   const zodiac = useMemo(() => {
     if (!petBirthday) return ZODIAC_DATA["白羊座"];
@@ -142,8 +243,13 @@ export default function App() {
     const t = scores.TF >= 0 ? 'T' : 'F';
     const j = scores.JP >= 0 ? 'J' : 'P';
     const code = `${e}${s}${t}${j}`;
-    return MBTI_TYPES[code] || MBTI_TYPES['ENFP'];
-  }, [scores]);
+    const baseType = MBTI_TYPES[code] || MBTI_TYPES['ENFP'];
+    
+    // Scheme B: Result modifiers based on gender
+    const genderLabel = GENDER_LABELS[petGender]?.[e] || GENDER_LABELS['neutral'][e];
+    
+    return { ...baseType, genderLabel };
+  }, [scores, petGender]);
 
   const indices = useMemo(() => {
     const sJP = scores.JP || 0;
@@ -175,11 +281,84 @@ export default function App() {
     setAnswers(new Array(QUESTIONS.length).fill(null));
     setPetName('');
     setPetBirthday('');
-    setSelectedBreedId('other');
+    setPetGender('male');
+    setSelectedBreedId(petType === 'dog' ? 'other_dog' : 'other_cat');
   };
+
+  const exportToImage = async () => {
+    if (!reportRef.current) return;
+    setIsGeneratingPDF(true);
+    
+    try {
+      const canvas = await html2canvas(reportRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#FDFCF8',
+        logging: false
+      });
+      
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/png', 1.0)
+      );
+      if (!blob) throw new Error('截图生成失败');
+
+      const fileName = `PetMBTI_${petName}_${new Date().toISOString().split('T')[0]}.png`;
+
+      // 手机端优先：系统分享
+      const canShare =
+        navigator.canShare &&
+        navigator.canShare({
+          files: [new File([blob], fileName, { type: 'image/png' })],
+        });
+
+      if (navigator.share && canShare) {
+        const file = new File([blob], fileName, { type: 'image/png' });
+        await navigator.share({
+          title: "宠物人格报告",
+          text: `这是我家 ${petName} 的灵性人格报告，快来看看吧！`,
+          files: [file],
+        });
+      } else {
+        // 桌面/不支持分享：直接下载
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+      
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error) {
+      console.error('Image generation failed:', error);
+      alert('生成报告图片失败，请重试');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  if (!isAuthorized) {
+    return <AuthGate onAuth={() => setIsAuthorized(true)} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#FDFCF8] text-[#2D2D2D] font-sans selection:bg-[#FFE66D]">
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] bg-[#2D2D2D] text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 font-bold"
+          >
+            <CheckCircle2 className="text-emerald-400" /> 已保存到下载文件夹
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         {step === 'home' && (
           <motion.div
@@ -238,35 +417,62 @@ export default function App() {
               </div>
 
               <div className="flex gap-3 justify-center">
-                {['dog', 'cat', 'other'].map((type) => (
+                {[
+                  { id: 'dog', label: '汪星人' },
+                  { id: 'cat', label: '喵星人' }
+                ].map((type) => (
                   <button
-                    key={type}
-                    onClick={() => setPetType(type)}
+                    key={type.id}
+                    onClick={() => {
+                      setPetType(type.id);
+                      setSelectedBreedId(type.id === 'dog' ? 'other_dog' : 'other_cat');
+                    }}
                     className={`flex-1 py-3 rounded-2xl border-2 transition-all font-black text-sm ${
-                      petType === type 
+                      petType === type.id 
                       ? 'border-[#FFE66D] bg-[#FFE66D] text-white shadow-md' 
                       : 'border-gray-100 text-gray-300 hover:border-gray-200'
                     }`}
                   >
-                    {type === 'dog' ? '汪星人' : type === 'cat' ? '喵星人' : '其他'}
+                    {type.label}
                   </button>
                 ))}
               </div>
 
-              {petType === 'dog' && (
+              <div className="flex gap-3 justify-center">
+                {[
+                  { id: 'male', label: '公', icon: <Mars size={16} /> },
+                  { id: 'female', label: '母', icon: <Venus size={16} /> }
+                ].map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => setPetGender(g.id)}
+                    className={`flex-1 py-3 rounded-2xl border-2 transition-all font-black text-sm flex items-center justify-center gap-2 ${
+                      petGender === g.id 
+                      ? 'border-[#FF6B6B] bg-[#FF6B6B] text-white shadow-md' 
+                      : 'border-gray-100 text-gray-300 hover:border-gray-200'
+                    }`}
+                  >
+                    {g.icon} {g.label}
+                  </button>
+                ))}
+              </div>
+
+              {(petType === 'dog' || petType === 'cat') && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   className="space-y-2 text-left"
                 >
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">选择狗狗品种</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-4">
+                    选择{petType === 'dog' ? '狗狗' : '猫猫'}品种
+                  </label>
                   <div className="relative">
                     <select
                       value={selectedBreedId}
                       onChange={(e) => setSelectedBreedId(e.target.value)}
                       className="w-full pl-6 pr-12 py-4 bg-white border-2 border-gray-100 rounded-2xl focus:border-[#FFE66D] outline-none appearance-none font-bold text-gray-700 shadow-sm cursor-pointer"
                     >
-                      {BREED_DATA.map(breed => (
+                      {(petType === 'dog' ? BREED_DATA : CAT_BREED_DATA).map(breed => (
                         <option key={breed.id} value={breed.id}>
                           {breed.icon} {breed.name} ({breed.enName})
                         </option>
@@ -274,7 +480,7 @@ export default function App() {
                     </select>
                     <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" size={20} />
                   </div>
-                  <p className="text-[10px] text-gray-400 italic ml-4">品种将轻微影响性格分析结果</p>
+                  <p className="text-[10px] text-gray-400 italic ml-4">品种与性别将轻微影响性格分析结果</p>
                 </motion.div>
               )}
 
@@ -395,7 +601,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             className="max-w-2xl mx-auto px-6 py-12"
           >
-            <div className="bg-white rounded-[3rem] shadow-2xl overflow-hidden border-8 border-white relative">
+            <div ref={reportRef} className="bg-white rounded-[3rem] shadow-2xl overflow-hidden border-8 border-white relative">
               <div 
                 className="p-10 text-white relative overflow-hidden"
                 style={{ backgroundColor: resultType.color }}
@@ -408,11 +614,17 @@ export default function App() {
                     <span className="px-4 py-1.5 bg-black/10 backdrop-blur-xl rounded-full text-[10px] font-black tracking-[0.3em] uppercase border border-white/10">
                       {zodiac.name}
                     </span>
+                    <span className="px-4 py-1.5 bg-white/10 backdrop-blur-xl rounded-full text-[10px] font-black tracking-[0.3em] uppercase border border-white/10">
+                      {petGender === 'male' ? '公' : petGender === 'female' ? '母' : '不确定'}
+                    </span>
                   </div>
                   <h1 className="text-6xl font-black mb-4 tracking-tighter">{petName}</h1>
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="text-3xl font-black bg-white text-black px-4 py-1 rounded-xl shadow-lg">
                       {zodiac.modifier}{resultType.elementModifier}{petType === 'dog' ? '犬' : petType === 'cat' ? '猫' : '灵'}
+                    </span>
+                    <span className="text-xl font-black bg-black/20 px-4 py-1 rounded-xl">
+                      {resultType.genderLabel}
                     </span>
                     <span className="text-2xl font-mono font-bold opacity-80">{resultType.code}</span>
                   </div>
@@ -507,10 +719,19 @@ export default function App() {
                 <div className="pt-6 flex flex-col items-center gap-6">
                   <div className="flex gap-4 w-full">
                     <button 
-                      onClick={() => window.print()}
-                      className="flex-1 py-5 bg-[#2D2D2D] text-white rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all"
+                      onClick={exportToImage}
+                      disabled={isGeneratingPDF}
+                      className="flex-1 py-5 bg-[#2D2D2D] text-white rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Share2 size={24} /> 保存灵性报告
+                      {isGeneratingPDF ? (
+                        <>
+                          <Loader2 size={24} className="animate-spin" /> 生成中...
+                        </>
+                      ) : (
+                        <>
+                          <Share2 size={24} /> 保存报告图片
+                        </>
+                      )}
                     </button>
                     <button 
                       onClick={reset}
@@ -525,6 +746,15 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <footer className="max-w-2xl mx-auto px-6 py-12 text-center">
+        <button 
+          onClick={handleLogout}
+          className="text-gray-300 hover:text-gray-500 transition-colors flex items-center gap-2 mx-auto text-xs font-black uppercase tracking-widest"
+        >
+          <LogOut size={14} /> 退出验证系统
+        </button>
+      </footer>
 
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
         <motion.div 

@@ -33,8 +33,56 @@ export const BREED_DATA: BreedInfo[] = [
   { id: 'corgi', name: '柯基', enName: 'Corgi', icon: '🍞', desc: '性格开朗，倔强的小短腿', modifiers: { EI: 0.3, JP: 0.2 } },
   { id: 'husky', name: '哈士奇', enName: 'Husky', icon: '🐺', desc: '精力旺盛，脑回路清奇', modifiers: { EI: 0.5, JP: -0.5 } },
   { id: 'chihuahua', name: '吉娃娃', enName: 'Chihuahua', icon: '🌮', desc: '机警勇敢，占有欲强', modifiers: { EI: -0.2, TF: 0.4 } },
-  { id: 'other', name: '其他/不确定', enName: 'Other', icon: '🐾', desc: '独特的灵魂，不被定义', modifiers: {} },
+  { id: 'other_dog', name: '其他/不确定', enName: 'Other Dog', icon: '🐾', desc: '独特的灵魂，不被定义', modifiers: {} },
 ];
+
+export const CAT_BREED_DATA: BreedInfo[] = [
+  { id: 'british_shorthair', name: '英短', enName: 'British Shorthair', icon: '🐱', desc: '安静稳重，适应力强', modifiers: { EI: -0.3, JP: 0.3 } },
+  { id: 'american_shorthair', name: '美短', enName: 'American Shorthair', icon: '🐈', desc: '活泼友善，体格强健', modifiers: { EI: 0.3, SN: 0.2 } },
+  { id: 'ragdoll', name: '布偶', enName: 'Ragdoll', icon: '🧸', desc: '温顺粘人，天生的伴侣', modifiers: { TF: -0.5, EI: 0.4 } },
+  { id: 'maine_coon', name: '缅因', enName: 'Maine Coon', icon: '🦁', desc: '体型巨大，性格温柔', modifiers: { EI: 0.2, TF: -0.2 } },
+  { id: 'siamese', name: '暹罗', enName: 'Siamese', icon: '🗣️', desc: '话痨粘人，感情丰富', modifiers: { EI: 0.5, TF: -0.3 } },
+  { id: 'persian', name: '波斯', enName: 'Persian', icon: '👑', desc: '高贵安静，需要细心呵护', modifiers: { EI: -0.5, JP: 0.2 } },
+  { id: 'russian_blue', name: '俄罗斯蓝猫', enName: 'Russian Blue', icon: '💎', desc: '文静害羞，对主人忠诚', modifiers: { EI: -0.4, SN: -0.2 } },
+  { id: 'norwegian_forest', name: '挪威森林猫', enName: 'Norwegian Forest', icon: '🌲', desc: '勇敢独立，喜欢攀爬', modifiers: { SN: 0.4, JP: -0.2 } },
+  { id: 'scottish_fold', name: '苏格兰折耳', enName: 'Scottish Fold', icon: '👂', desc: '性格温和，长相甜美', modifiers: { TF: -0.3, EI: -0.1 } },
+  { id: 'bombay', name: '孟买猫', enName: 'Bombay', icon: '🐈‍⬛', desc: '活泼好动，像个小黑豹', modifiers: { EI: 0.4, SN: 0.3 } },
+  { id: 'orange', name: '橘猫', enName: 'Orange Tabby', icon: '🍊', desc: '开朗贪吃，心宽体胖', modifiers: { EI: 0.3, TF: -0.2 } },
+  { id: 'other_cat', name: '其他/不确定', enName: 'Other Cat', icon: '🐾', desc: '神秘莫测，不被定义', modifiers: {} },
+];
+
+export const GENDER_LABELS: Record<string, Record<string, string>> = {
+  male: {
+    E: "阳光大哥型",
+    I: "冷静绅士型",
+    S: "务实硬汉型",
+    N: "睿智谋士型",
+    T: "理性直男型",
+    F: "温柔暖男型",
+    J: "严谨管家型",
+    P: "随性浪子型"
+  },
+  female: {
+    E: "元气少女型",
+    I: "高冷女神型",
+    S: "干练御姐型",
+    N: "灵动才女型",
+    T: "酷飒大女主型",
+    F: "甜美小公举型",
+    J: "精致名媛型",
+    P: "自由精灵型"
+  },
+  neutral: {
+    E: "社交达人型",
+    I: "静谧思考型",
+    S: "稳健派型",
+    N: "创意家型",
+    T: "逻辑控型",
+    F: "情感系型",
+    J: "规划者型",
+    P: "探索者型"
+  }
+};
 
 export interface MBTIType {
   code: string;
