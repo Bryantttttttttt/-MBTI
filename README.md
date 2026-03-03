@@ -1,11 +1,25 @@
-<div align="center">
+# Pet MBTI Pro - Vercel Deployment Guide
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+If you are seeing a white screen after deploying to Vercel, please follow these steps:
 
-  <h1>Built with AI Studio</h2>
+## 1. Set Node.js Version to 20+
+Tailwind CSS 4 and the latest Vite require Node.js 20 or higher.
+- Go to your Vercel Project Settings.
+- Under **General**, find **Node.js Version**.
+- Select **20.x** or **22.x**.
+- Redeploy your app.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+## 2. Check Build Settings
+Ensure your build settings are as follows:
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+- **Install Command**: `npm install`
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
+## 3. Environment Variables
+If you are using the Gemini AI features, make sure to add your `GEMINI_API_KEY` in the Vercel **Environment Variables** settings.
 
-</div>
+## 4. SPA Routing
+We have included a `vercel.json` file to handle Single Page Application (SPA) routing. This ensures that refreshing the page on a sub-route doesn't lead to a 404 error.
+
+## 5. Full-Stack Setup (Optional)
+We have included a `server.ts` file. If you want to use a custom Express backend on Vercel, you may need to configure Vercel to use the `@vercel/node` builder for the `server.ts` file, but for most cases, the static Vite build is sufficient.
