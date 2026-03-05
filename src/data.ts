@@ -1,3 +1,228 @@
+export interface ComicTemplate {
+  id: string;
+  theme: string;
+  panels: string[];
+}
+
+export const PERSONALITY_TITLES = [
+  "奶油社交家", "黏人小太阳", "冷面小暴君", "高智商焦虑怪", "温柔守护者", "冒险小火箭",
+  "戏精小演员", "慵懒小王子", "拆家艺术家", "小哲学家", "宇宙交际花", "安静小月亮"
+];
+
+export const COMIC_TEMPLATES: ComicTemplate[] = [
+  {
+    id: "social_star",
+    theme: "社交达人的日常",
+    panels: [
+      "开场：宠物在门口兴奋地等待客人",
+      "性格表现：客人一进门，宠物立刻扑上去热情欢迎",
+      "与主人互动：主人拉都拉不住，宠物已经和客人打成一片",
+      "情绪变化：客人离开时，宠物依依不舍地望着门口",
+      "可爱行为：试图钻进客人的包里想被带走",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  },
+  {
+    id: "clingy_sun",
+    theme: "黏人精的贴贴生活",
+    panels: [
+      "开场：主人正在沙发上玩手机",
+      "性格表现：宠物像影子一样紧紧贴着主人的腿",
+      "与主人互动：主人去洗手间，宠物在门口疯狂挠门",
+      "情绪变化：主人抱起宠物时，它露出极度满足的表情",
+      "可爱行为：睡觉也要把头枕在主人的脚背上",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  },
+  {
+    id: "little_tyrant",
+    theme: "霸道总裁的巡视",
+    panels: [
+      "开场：宠物站在高处俯瞰整个客厅",
+      "性格表现：用爪子拍打空碗，示意主人立刻上菜",
+      "与主人互动：主人试图摸头，被它傲娇地躲开",
+      "情绪变化：看到心爱的零食，瞬间变脸卖萌",
+      "可爱行为：霸占主人的枕头，让主人无处可睡",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  },
+  {
+    id: "anxious_genius",
+    theme: "高智商的烦恼",
+    panels: [
+      "开场：宠物盯着扫地机器人，眼神充满警惕",
+      "性格表现：成功破解了自动喂食器的密码",
+      "与主人互动：主人藏起零食，它瞬间识破并找了出来",
+      "情绪变化：听到雷声，立刻钻进主人的被窝寻求安全感",
+      "可爱行为：试图模仿主人敲击键盘的样子",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  },
+  {
+    id: "gentle_guardian",
+    theme: "温柔的守护时光",
+    panels: [
+      "开场：主人下班回家，一脸疲惫地坐下",
+      "性格表现：宠物静静地走过来，把头靠在主人膝盖上",
+      "与主人互动：主人流泪时，它温柔地舔去主人的泪水",
+      "情绪变化：家里有响动，它立刻警觉地护在主人身前",
+      "可爱行为：把最心爱的玩具叼给主人，想让主人开心",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  },
+  {
+    id: "adventure_rocket",
+    theme: "疯狂的冒险之旅",
+    panels: [
+      "开场：看到牵引绳的瞬间，宠物化身残影",
+      "性格表现：在草地上疯狂冲刺，像一颗发射的小火箭",
+      "与主人互动：主人在后面追得气喘吁吁，它回头挑衅",
+      "情绪变化：被带回家时，四脚朝天耍赖不想走",
+      "可爱行为：试图追逐自己的尾巴，转成一个圆圈",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  },
+  {
+    id: "drama_actor",
+    theme: "戏精的自我修养",
+    panels: [
+      "开场：主人拿出了洗澡盆，宠物瞬间消失",
+      "性格表现：被抓到后，露出仿佛要被送去外星的惊恐表情",
+      "与主人互动：主人给它穿上小衣服，它立刻僵住不会走路",
+      "情绪变化：看到零食，刚才的委屈瞬间烟消云散",
+      "可爱行为：对着镜子里的自己疯狂叫唤，以为是新朋友",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  },
+  {
+    id: "lazy_prince",
+    theme: "慵懒王子的午后",
+    panels: [
+      "开场：阳光洒在窗台上，宠物正在摊成一张饼",
+      "性格表现：主人叫它名字，它只动了动耳朵尖表示听到了",
+      "与主人互动：主人试图逗它玩，它翻个身继续睡",
+      "情绪变化：开罐头的声音响起，它以瞬移的速度出现",
+      "可爱行为：睡觉时吐出一点点舌头尖，还打着小呼噜",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  },
+  {
+    id: "destruction_artist",
+    theme: "拆家艺术家的杰作",
+    panels: [
+      "开场：主人出门了，宠物露出了神秘的微笑",
+      "性格表现：卫生纸被拉得满屋子都是，像在办画展",
+      "与主人互动：主人回家看到惨状，它一脸无辜地歪头",
+      "情绪变化：被训斥时，立刻躲进沙发底下装可怜",
+      "可爱行为：把拖鞋叼进窝里，当成自己的战利品",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  },
+  {
+    id: "philosopher",
+    theme: "小哲学家的沉思",
+    panels: [
+      "开场：宠物坐在窗边，深沉地望着远方",
+      "性格表现：拒绝玩幼稚的球类游戏，保持高冷",
+      "与主人互动：主人跟它说话，它用深邃的眼神回应",
+      "情绪变化：看到一只飞过的蝴蝶，瞬间破功去追逐",
+      "可爱行为：思考时会用爪子托着下巴，像个思想者",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  },
+  {
+    id: "universal_friend",
+    theme: "宇宙交际花的魅力",
+    panels: [
+      "开场：在公园里，它主动走向一只巨大的藏獒",
+      "性格表现：不仅和狗玩，还试图和路边的流浪猫打招呼",
+      "与主人互动：主人带它去宠物店，它和所有员工都贴贴",
+      "情绪变化：看到没见过的奇怪生物，第一反应是去闻闻",
+      "可爱行为：试图模仿其他动物的叫声，发出奇怪的音节",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  },
+  {
+    id: "quiet_moon",
+    theme: "安静小月亮的陪伴",
+    panels: [
+      "开场：夜深了，宠物静静地趴在主人脚边",
+      "性格表现：不吵不闹，只是温柔地注视着主人工作",
+      "与主人互动：主人伸出手，它轻轻地把爪子搭上去",
+      "情绪变化：主人关灯睡觉，它轻手轻脚地跳上床角",
+      "可爱行为：在睡梦中轻轻蹬腿，似乎在做美梦",
+      "总结：展示宠物名字、MBTI、星座和人格称号"
+    ]
+  }
+];
+
+export const getPersonalityTitleAndTemplate = (code: string, scores: { EI: number, SN: number, TF: number, JP: number }) => {
+  const e = scores.EI;
+  const i = -scores.EI;
+  const s = scores.SN;
+  const n = -scores.SN;
+  const t = scores.TF;
+  const f = -scores.TF;
+  const j = scores.JP;
+  const p = -scores.JP;
+
+  // Logic to pick title
+  let title = PERSONALITY_TITLES[0];
+  let templateId = "social_star";
+
+  if (e > 0 && f > 0) {
+    title = "奶油社交家";
+    templateId = "social_star";
+  }
+  if (e > 2 && f > 2) {
+    title = "黏人小太阳";
+    templateId = "clingy_sun";
+  }
+  if (e > 0 && t > 0) {
+    title = "冷面小暴君";
+    templateId = "little_tyrant";
+  }
+  if (n > 0 && j > 0) {
+    title = "高智商焦虑怪";
+    templateId = "anxious_genius";
+  }
+  if (f > 0 && j > 0) {
+    title = "温柔守护者";
+    templateId = "gentle_guardian";
+  }
+  if (e > 0 && p > 0) {
+    title = "冒险小火箭";
+    templateId = "adventure_rocket";
+  }
+  if (e > 1 && p > 1 && f > 0) {
+    title = "戏精小演员";
+    templateId = "drama_actor";
+  }
+  if (i > 0 && p > 0) {
+    title = "慵懒小王子";
+    templateId = "lazy_prince";
+  }
+  if (s > 0 && p > 0) {
+    title = "拆家艺术家";
+    templateId = "destruction_artist";
+  }
+  if (i > 0 && n > 0) {
+    title = "小哲学家";
+    templateId = "philosopher";
+  }
+  if (e > 3) {
+    title = "宇宙交际花";
+    templateId = "universal_friend";
+  }
+  if (i > 2 && f > 0) {
+    title = "安静小月亮";
+    templateId = "quiet_moon";
+  }
+
+  const template = COMIC_TEMPLATES.find(t => t.id === templateId) || COMIC_TEMPLATES[0];
+  return { title, template };
+};
+
 export interface Question {
   id: number;
   text: string;

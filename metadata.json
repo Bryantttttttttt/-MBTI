@@ -1,5 +1,5 @@
 {
-  "name": "Pet MBTI Pro - 灵性人格全书",
-  "description": "融合行为心理学与星象玄学的宠物人格测试。32道深度题项，揭秘毛孩子的星座、五行、前世身份与灵魂指数。准到离谱，全网爆火！",
-  "requestFramePermissions": []
+  "name": "Pet Manga Workshop - 宠物漫画工坊",
+  "description": "融合AI技术的宠物漫画设计与性格测试工具。上传狗狗照片，一键生成日系Kawaii角色设定图；或通过深度测试，揭秘毛孩子的灵性人格。",
+  "requestFramePermissions": ["camera"]
 }
