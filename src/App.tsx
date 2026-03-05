@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import html2canvas from 'html2canvas';
+import * as htmlToImage from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import ReactMarkdown from 'react-markdown';
 import { 
@@ -37,6 +37,7 @@ import {
   ZODIAC_DATA, 
   WU_XING_DATA, 
   PAST_LIFE_DATA,
+  FORTUNE_DATA,
   BREED_DATA,
   CAT_BREED_DATA,
   GENDER_LABELS,
@@ -290,12 +291,6 @@ export default function App() {
     return WU_XING_DATA["水"];
   }, [petBirthday]);
 
-  const pastLife = useMemo(() => {
-    const seed = (petName?.length || 0) + (petBirthday ? new Date(petBirthday).getTime() : 0);
-    const index = isNaN(seed) ? 0 : Math.abs(Math.floor(seed)) % PAST_LIFE_DATA.length;
-    return PAST_LIFE_DATA[index] || PAST_LIFE_DATA[0];
-  }, [petName, petBirthday]);
-
   const resultType = useMemo(() => {
     const e = scores.EI >= 0 ? 'E' : 'I';
     const s = scores.SN >= 0 ? 'S' : 'N';
@@ -309,6 +304,19 @@ export default function App() {
     
     return { ...baseType, genderLabel };
   }, [scores, petGender]);
+
+  const pastLife = useMemo(() => {
+    if (!petBirthday || !resultType.code) return PAST_LIFE_DATA[0];
+    
+    // Combine MBTI code and Zodiac to create a more deterministic but varied seed
+    const mbtiSeed = resultType.code.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const zodiacSeed = zodiac.name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const birthdaySeed = new Date(petBirthday).getTime() % 10000;
+    
+    const seed = mbtiSeed + zodiacSeed + birthdaySeed + (petName?.length || 0);
+    const index = Math.abs(Math.floor(seed)) % PAST_LIFE_DATA.length;
+    return PAST_LIFE_DATA[index];
+  }, [petName, petBirthday, resultType.code, zodiac]);
 
   const indices = useMemo(() => {
     const sJP = scores.JP || 0;
@@ -327,10 +335,16 @@ export default function App() {
   }, [scores, zodiac]);
 
   const fortune = useMemo(() => {
-    const fortunes = ["宜拆家，忌洗澡", "宜贴贴，忌出门", "宜加餐，忌运动", "宜睡觉，忌思考", "宜社交，忌独处"];
-    const seed = new Date().getDate() + petName.length;
-    return fortunes[seed % fortunes.length];
-  }, [petName]);
+    if (!petBirthday) return "宜加餐，忌运动";
+    
+    // Daily seed + pet characteristics
+    const today = new Date().getDate();
+    const mbtiSeed = resultType.code?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0;
+    const seed = today + mbtiSeed + (petName?.length || 0);
+    
+    const item = FORTUNE_DATA[seed % FORTUNE_DATA.length];
+    return `宜${item.yi}，忌${item.ji}`;
+  }, [petName, petBirthday, resultType.code]);
 
   const progress = ((currentQuestionIndex + 1) / QUESTIONS.length) * 100;
 
@@ -642,47 +656,31 @@ The output must be a single, full-page illustration for this specific panel.`;
     setIsGeneratingPDF(true);
     
     try {
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        useCORS: true,
+      // Use toPng for better compatibility in iframe
+      const dataUrl = await htmlToImage.toPng(reportRef.current, {
+        pixelRatio: 2,
         backgroundColor: '#FDFCF8',
-        logging: false
+        filter: (node) => {
+          if (node instanceof HTMLElement && node.hasAttribute('data-html2canvas-ignore')) {
+            return false;
+          }
+          return true;
+        }
       });
       
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, 'image/png', 1.0)
-      );
-      if (!blob) throw new Error('截图生成失败');
+      if (!dataUrl) throw new Error('截图生成失败');
 
       const fileName = `PetMBTI_${petName}_${new Date().toISOString().split('T')[0]}.png`;
 
-      // 手机端优先：系统分享
-      const canShare =
-        navigator.canShare &&
-        navigator.canShare({
-          files: [new File([blob], fileName, { type: 'image/png' })],
-        });
-
-      if (navigator.share && canShare) {
-        const file = new File([blob], fileName, { type: 'image/png' });
-        await navigator.share({
-          title: "宠物人格报告",
-          text: `这是我家 ${petName} 的灵性人格报告，快来看看吧！`,
-          files: [file],
-        });
-      } else {
-        // 桌面/不支持分享：直接下载
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      }
+      // Simplified download logic for better iframe compatibility
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       
-      showToastWithMsg('报告图片已保存到下载文件夹');
+      showToastWithMsg('报告图片已保存');
     } catch (error) {
       console.error('Image generation failed:', error);
       showToastWithMsg('生成报告图片失败，请重试');
@@ -985,32 +983,32 @@ The output must be a single, full-page illustration for this specific panel.`;
             animate={{ opacity: 1, scale: 1 }}
             className="max-w-2xl mx-auto px-6 py-12"
           >
-            <div ref={reportRef} className="bg-[#ffffff] rounded-[3rem] shadow-2xl overflow-hidden border-8 border-[#ffffff] relative" style={{ backgroundColor: '#ffffff', borderColor: '#ffffff' }}>
+            <div ref={reportRef} className="rounded-[3rem] overflow-hidden border-8 relative" style={{ backgroundColor: '#ffffff', borderColor: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
               <div 
-                className="p-10 text-[#ffffff] relative overflow-hidden"
+                className="p-10 relative overflow-hidden"
                 style={{ backgroundColor: resultType.color, color: '#ffffff' }}
               >
                 <div className="relative z-10">
                   <div className="flex items-center gap-3 mb-6">
-                    <span className="px-4 py-1.5 bg-[#ffffff]/20 backdrop-blur-xl rounded-full text-[10px] font-black tracking-[0.3em] uppercase border border-[#ffffff]/30" style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
+                    <span className="px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.3em] uppercase border" style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
                       SPIRITUAL REPORT
                     </span>
-                    <span className="px-4 py-1.5 bg-[#000000]/10 backdrop-blur-xl rounded-full text-[10px] font-black tracking-[0.3em] uppercase border border-[#ffffff]/10" style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                    <span className="px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.3em] uppercase border" style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                       {zodiac.name}
                     </span>
-                    <span className="px-4 py-1.5 bg-[#ffffff]/10 backdrop-blur-xl rounded-full text-[10px] font-black tracking-[0.3em] uppercase border border-[#ffffff]/10" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                    <span className="px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.3em] uppercase border" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                       {petGender === 'male' ? '公' : petGender === 'female' ? '母' : '不确定'}
                     </span>
                   </div>
                   <h1 className="text-6xl font-black mb-4 tracking-tighter" style={{ color: '#ffffff' }}>{petName}</h1>
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-3xl font-black bg-[#ffffff] text-[#000000] px-4 py-1 rounded-xl shadow-lg" style={{ backgroundColor: '#ffffff', color: '#000000' }}>
+                    <span className="text-3xl font-black px-4 py-1 rounded-xl" style={{ backgroundColor: '#ffffff', color: '#000000', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
                       {zodiac.modifier}{resultType.elementModifier}{petType === 'dog' ? '犬' : petType === 'cat' ? '猫' : '灵'}
                     </span>
-                    <span className="text-xl font-black bg-[#000000]/20 px-4 py-1 rounded-xl" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
+                    <span className="text-xl font-black px-4 py-1 rounded-xl" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)', color: '#ffffff' }}>
                       {resultType.genderLabel}
                     </span>
-                    <span className="text-2xl font-mono font-bold opacity-80">{resultType.code}</span>
+                    <span className="text-2xl font-mono font-bold opacity-80" style={{ color: '#ffffff' }}>{resultType.code}</span>
                   </div>
                 </div>
               </div>
@@ -1033,16 +1031,16 @@ The output must be a single, full-page illustration for this specific panel.`;
 
                 <section>
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-2xl bg-[#FFE66D] flex items-center justify-center shadow-lg" style={{ backgroundColor: '#FFE66D' }}>
-                      <Sparkles size={20} className="text-[#ffffff]" style={{ color: '#ffffff' }} />
+                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#FFE66D', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+                      <Sparkles size={20} style={{ color: '#ffffff' }} />
                     </div>
                     <h2 className="text-2xl font-black" style={{ color: '#2D2D2D' }}>人格深度解析</h2>
                   </div>
                   <div className="space-y-4">
-                    <p className="text-xl font-bold text-[#374151] leading-snug italic border-l-4 border-[#FFE66D] pl-6" style={{ color: '#374151', borderLeftColor: '#FFE66D' }}>
+                    <p className="text-xl font-bold leading-snug italic border-l-4 pl-6" style={{ color: '#374151', borderLeftColor: '#FFE66D' }}>
                       "{resultType.summary}"
                     </p>
-                    <p className="text-[#6b7280] leading-relaxed font-medium" style={{ color: '#6b7280' }}>
+                    <p className="leading-relaxed font-medium" style={{ color: '#6b7280' }}>
                       {resultType.description} {zodiac.trait}。
                     </p>
                   </div>
@@ -1104,10 +1102,10 @@ The output must be a single, full-page illustration for this specific panel.`;
                 <div className="pt-6 flex flex-col items-center gap-6">
                   <div className="flex flex-col gap-6 w-full">
                     {/* AI Manga Workshop Section */}
-                    <section className="p-8 bg-[#ffffff] rounded-[2.5rem] border-4 border-[#FFE66D] shadow-xl space-y-6" style={{ backgroundColor: '#ffffff', borderColor: '#FFE66D' }}>
+                    <section className="p-8 rounded-[2.5rem] border-4 space-y-6" style={{ backgroundColor: '#ffffff', borderColor: '#FFE66D', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-2xl bg-[#fffbeb] flex items-center justify-center" style={{ backgroundColor: '#fffbeb' }}>
-                          <Sparkles size={20} className="text-[#f59e0b]" style={{ color: '#f59e0b' }} />
+                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#fffbeb' }}>
+                          <Sparkles size={20} style={{ color: '#f59e0b' }} />
                         </div>
                         <h2 className="text-2xl font-black" style={{ color: '#2D2D2D' }}>AI 漫画工坊</h2>
                       </div>
@@ -1242,14 +1240,19 @@ The output must be a single, full-page illustration for this specific panel.`;
                                   const comicElement = document.getElementById('pet-comic-container');
                                   if (comicElement) {
                                     try {
-                                      const canvas = await html2canvas(comicElement, {
-                                        useCORS: true,
-                                        scale: 2,
-                                        backgroundColor: '#ffffff'
+                                      const dataUrl = await htmlToImage.toPng(comicElement, {
+                                        backgroundColor: '#ffffff',
+                                        pixelRatio: 2,
+                                        filter: (node) => {
+                                          if (node instanceof HTMLElement && node.hasAttribute('data-html2canvas-ignore')) {
+                                            return false;
+                                          }
+                                          return true;
+                                        }
                                       });
                                       const link = document.createElement('a');
                                       link.download = `PetComic_${petName}_Page${currentComicPage + 1}.png`;
-                                      link.href = canvas.toDataURL('image/png');
+                                      link.href = dataUrl;
                                       link.click();
                                       showToastWithMsg('当前页面已保存');
                                     } catch (err) {
@@ -1268,7 +1271,7 @@ The output must be a single, full-page illustration for this specific panel.`;
                             
                             {/* Comic Image with Text Overlays - Paginated View */}
                             <div className="relative">
-                              <div id="pet-comic-container" className="relative w-full aspect-square rounded-2xl overflow-hidden relative border-4" style={{ backgroundColor: '#ffffff', borderColor: '#ffffff' }}>
+                              <div id="pet-comic-container" className="relative w-full aspect-square rounded-2xl overflow-hidden border-4" style={{ backgroundColor: '#ffffff', borderColor: '#ffffff', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
                                 <motion.div 
                                   key={currentComicPage}
                                   initial={{ opacity: 0, x: 20 }}
@@ -1293,7 +1296,7 @@ The output must be a single, full-page illustration for this specific panel.`;
                                   
                                   {/* Text Overlay for current panel */}
                                   <div className="absolute top-4 left-4 right-4 pointer-events-none">
-                                    <div className="backdrop-blur-md px-4 py-2 rounded-2xl border inline-block max-w-[90%]" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderColor: '#f3f4f6' }}>
+                                    <div className="px-4 py-2 rounded-2xl border shadow-lg inline-block max-w-[90%]" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderColor: '#f3f4f6' }}>
                                       <p className="text-sm md:text-base leading-tight font-black break-words" style={{ color: '#1f2937' }}>
                                         {parseComicScript(comicScript)[currentComicPage]?.speaker && (
                                           <span className="text-[10px] mr-1 opacity-70" style={{ color: '#f59e0b' }}>
@@ -1306,7 +1309,7 @@ The output must be a single, full-page illustration for this specific panel.`;
                                   </div>
 
                                   {/* Page Indicator */}
-                                  <div className="absolute bottom-4 right-4 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black tracking-widest" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#ffffff' }}>
+                                  <div className="absolute bottom-4 right-4 px-3 py-1 rounded-full text-[10px] font-black tracking-widest" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#ffffff' }}>
                                     {currentComicPage + 1} / 6
                                   </div>
                                 </motion.div>
