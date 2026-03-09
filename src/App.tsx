@@ -354,12 +354,19 @@ export default function App() {
 
   const progress = ((currentQuestionIndex + 1) / QUESTIONS.length) * 100;
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setReferenceImage(reader.result as string);
+      reader.onloadend = async () => {
+        try {
+          // Resize immediately to save memory and avoid large state updates
+          const resized = await resizeImage(reader.result as string, 800, 800);
+          setReferenceImage(resized);
+        } catch (err) {
+          console.error('Image resize failed:', err);
+          setReferenceImage(reader.result as string);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -369,12 +376,13 @@ export default function App() {
     if (!referenceImage) return;
     setIsDesigning(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error('API_KEY_MISSING');
+      const ai = new GoogleGenAI({ apiKey });
       
-      // Resize image to avoid 500 errors and ensure correct mimeType
-      const resizedImage = await resizeImage(referenceImage, 800, 800);
-      const mimeType = resizedImage.split(';')[0].split(':')[1] || 'image/jpeg';
-      const base64Data = resizedImage.split(',')[1];
+      // Image is already resized in handleImageUpload
+      const mimeType = referenceImage.split(';')[0].split(':')[1] || 'image/jpeg';
+      const base64Data = referenceImage.split(',')[1];
 
       const breedName = petType === 'dog' 
         ? BREED_DATA.find(b => b.id === selectedBreedId)?.name 
@@ -423,9 +431,16 @@ Requirements:
       } else {
         throw new Error('未能生成角色设定图');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Character design failed:', error);
-      showToastWithMsg('生成角色设定图失败，可能是由于图片过大或网络波动，请重试。');
+      const errorStr = JSON.stringify(error);
+      if (error?.message === 'API_KEY_MISSING') {
+        showToastWithMsg('API密钥配置缺失，请检查环境变量');
+      } else if (errorStr.includes('Safety') || error?.message?.includes('Safety')) {
+        showToastWithMsg('内容触发安全策略，请尝试更换照片或描述');
+      } else {
+        showToastWithMsg(`设定图生成失败: ${error?.message || '未知错误'}`);
+      }
     } finally {
       setIsDesigning(false);
     }
@@ -434,7 +449,9 @@ Requirements:
   const generateComicScript = async () => {
     setIsGeneratingScript(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) throw new Error('API_KEY_MISSING');
+      const ai = new GoogleGenAI({ apiKey });
       const { title } = getPersonalityTitleAndTemplate(resultType.code, scores);
       const breedName = petType === 'dog' 
         ? BREED_DATA.find(b => b.id === selectedBreedId)?.name 
@@ -477,7 +494,7 @@ Speaker: [谁在说话：毛孩子/主人/旁白]
 Text: [对话或旁白内容]`;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-flash-latest',
         contents: prompt,
       });
 
@@ -486,9 +503,13 @@ Text: [对话或旁白内容]`;
         return response.text;
       }
       throw new Error('未能生成剧本');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Script generation failed:', error);
-      showToastWithMsg('生成剧本失败，请重试');
+      if (error?.message === 'API_KEY_MISSING') {
+        showToastWithMsg('API密钥配置缺失，请检查环境变量');
+      } else {
+        showToastWithMsg(`剧本生成失败: ${error?.message || '未知错误'}`);
+      }
       return null;
     } finally {
       setIsGeneratingScript(false);
@@ -537,7 +558,11 @@ Text: [对话或旁白内容]`;
     setComicGenerationProgress(0);
     setComicImageUrls([]);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('API_KEY_MISSING');
+      }
+      const ai = new GoogleGenAI({ apiKey });
       
       let script = comicScript;
       if (!script) {
@@ -561,7 +586,7 @@ Text: [对话或旁白内容]`;
         setComicGenerationProgress(i + 1);
         
         // Add a small delay between panels to avoid hitting rate limits
-        if (i > 0) await sleep(1000);
+        if (i > 0) await sleep(1500);
 
         const isLastPanel = i === 5;
         const panelScript = panels[i];
@@ -588,9 +613,9 @@ The output must be a single, full-page illustration for this specific panel.`;
         };
 
         if (referenceImage) {
-          const resizedImage = await resizeImage(referenceImage, 800, 800);
-          const mimeType = resizedImage.split(';')[0].split(':')[1] || 'image/jpeg';
-          const base64Data = resizedImage.split(',')[1];
+          // Image is already resized in handleImageUpload
+          const mimeType = referenceImage.split(';')[0].split(':')[1] || 'image/jpeg';
+          const base64Data = referenceImage.split(',')[1];
           contents.parts.unshift({
             inlineData: {
               data: base64Data,
@@ -601,7 +626,7 @@ The output must be a single, full-page illustration for this specific panel.`;
 
         let response = null;
         let retries = 3;
-        let baseDelay = 3000;
+        let baseDelay = 4000;
 
         for (let attempt = 0; attempt < retries; attempt++) {
           try {
@@ -611,9 +636,10 @@ The output must be a single, full-page illustration for this specific panel.`;
             });
             break; // Success
           } catch (error: any) {
+            const errorStr = JSON.stringify(error);
             const isRateLimit = error?.status === 'RESOURCE_EXHAUSTED' || 
                                error?.message?.includes('429') || 
-                               JSON.stringify(error).includes('429');
+                               errorStr.includes('429');
             
             if (isRateLimit && attempt < retries - 1) {
               const waitTime = baseDelay * Math.pow(2, attempt);
@@ -642,14 +668,20 @@ The output must be a single, full-page illustration for this specific panel.`;
       }
     } catch (error: any) {
       console.error('Comic generation failed:', error);
+      const errorStr = JSON.stringify(error);
       const isRateLimit = error?.status === 'RESOURCE_EXHAUSTED' || 
                          error?.message?.includes('429') || 
-                         JSON.stringify(error).includes('429');
+                         errorStr.includes('429');
       
-      if (isRateLimit) {
+      if (error?.message === 'API_KEY_MISSING') {
+        showToastWithMsg('API密钥配置缺失，请检查环境变量');
+      } else if (isRateLimit) {
         showToastWithMsg('生成速度过快，请稍等片刻再试哦');
+      } else if (errorStr.includes('Safety') || error?.message?.includes('Safety')) {
+        showToastWithMsg('内容触发安全策略，请尝试更换照片或描述');
       } else {
-        showToastWithMsg('生成漫画失败，请重试');
+        const detail = error?.message || (typeof error === 'object' ? errorStr : String(error));
+        showToastWithMsg(`生成失败: ${detail.substring(0, 30)}...，请重试`);
       }
     } finally {
       setIsGeneratingComic(false);
