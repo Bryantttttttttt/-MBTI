@@ -305,6 +305,12 @@ export default function App() {
     return { ...baseType, genderLabel };
   }, [scores, petGender]);
 
+  const personalityTitle = useMemo(() => {
+    if (!resultType.code) return "";
+    const { title } = getPersonalityTitleAndTemplate(resultType.code, scores);
+    return title;
+  }, [resultType.code, scores]);
+
   const pastLife = useMemo(() => {
     if (!petBirthday || !resultType.code) return PAST_LIFE_DATA[0];
     
@@ -542,7 +548,6 @@ Text: [对话或旁白内容]`;
       const panels = parseComicScript(script);
       if (panels.length < 6) throw new Error('剧本解析失败，未找到足够的格数');
 
-      const { title } = getPersonalityTitleAndTemplate(resultType.code, scores);
       const breedName = petType === 'dog' 
         ? BREED_DATA.find(b => b.id === selectedBreedId)?.name 
         : CAT_BREED_DATA.find(b => b.id === selectedBreedId)?.name;
@@ -571,9 +576,10 @@ Anatomy: The ${petType} MUST have exactly 4 legs. Ensure anatomically correct po
 Scene Description: ${panelScript.text}
 
 CRITICAL INSTRUCTIONS:
-- ABSOLUTELY NO TEXT, LETTERS, NUMBERS, OR SYMBOLS in the image${isLastPanel ? ' EXCEPT on the ID card' : ''}.
-- DO NOT draw speech bubbles or thought bubbles.
-- ${isLastPanel ? `This is the FINAL panel. It MUST include a "Pet ID Card" or "Personality Card" held by the owner or shown next to the pet. The ID card should have: Name: ${petName}, MBTI: ${resultType.code}, Zodiac: ${zodiac.name}, Title: ${title}, Clinginess: ${indices.clinginess}%. Style: cute pet ID card, rounded corners, pastel colors, small paw decorations.` : 'Focus entirely on visual storytelling through actions and expressions.'}
+- ABSOLUTELY NO TEXT, LETTERS, NUMBERS, OR SYMBOLS in the image. 
+- DO NOT draw speech bubbles, thought bubbles, or any labels.
+- If the scene description mentions names or words, DO NOT draw them.
+- ${isLastPanel ? `This is the FINAL panel. It MUST include a "Pet ID Card" or "Personality Card" held by the owner or shown next to the pet. The ID card MUST BE COMPLETELY BLANK (no text, no letters, no numbers). Style: cute pet ID card, rounded corners, pastel colors, small paw decorations.` : 'Focus entirely on visual storytelling through actions and expressions.'}
 
 The output must be a single, full-page illustration for this specific panel.`;
 
@@ -1312,6 +1318,47 @@ The output must be a single, full-page illustration for this specific panel.`;
                                   <div className="absolute bottom-4 right-4 px-3 py-1 rounded-full text-[10px] font-black tracking-widest" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#ffffff' }}>
                                     {currentComicPage + 1} / 6
                                   </div>
+
+                                  {/* Pet Card Overlay for the final panel */}
+                                  {currentComicPage === 5 && (
+                                    <div className="absolute bottom-12 left-4 pointer-events-none">
+                                      <motion.div 
+                                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        transition={{ delay: 0.5 }}
+                                        className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl border-2 border-[#FFE66D] shadow-xl w-48 space-y-2"
+                                      >
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <div className="w-2 h-2 rounded-full bg-[#fb7185]" />
+                                          <span className="text-[10px] font-black tracking-widest text-[#9ca3af] uppercase">Pet ID Card</span>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-[8px] font-bold text-[#9ca3af]">NAME</span>
+                                            <span className="text-xs font-black text-[#2D2D2D]">{petName}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-[8px] font-bold text-[#9ca3af]">MBTI</span>
+                                            <span className="text-xs font-black text-[#2D2D2D]">{resultType.code}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-[8px] font-bold text-[#9ca3af]">ZODIAC</span>
+                                            <span className="text-xs font-black text-[#2D2D2D]">{zodiac.name}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-[8px] font-bold text-[#9ca3af]">TITLE</span>
+                                            <span className="text-xs font-black text-[#2D2D2D]">{personalityTitle}</span>
+                                          </div>
+                                          <div className="pt-1 border-t border-dashed border-[#f3f4f6]">
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-[8px] font-bold text-[#9ca3af]">CLINGINESS</span>
+                                              <span className="text-xs font-black text-[#fb7185]">{indices.clinginess}%</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </motion.div>
+                                    </div>
+                                  )}
                                 </motion.div>
                               </div>
 
