@@ -376,7 +376,7 @@ export default function App() {
     if (!referenceImage) return;
     setIsDesigning(true);
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || (import.meta.env && import.meta.env.VITE_GEMINI_API_KEY);
       if (!apiKey) throw new Error('API_KEY_MISSING');
       const ai = new GoogleGenAI({ apiKey });
       
@@ -449,7 +449,7 @@ Requirements:
   const generateComicScript = async () => {
     setIsGeneratingScript(true);
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || (import.meta.env && import.meta.env.VITE_GEMINI_API_KEY);
       if (!apiKey) throw new Error('API_KEY_MISSING');
       const ai = new GoogleGenAI({ apiKey });
       const { title } = getPersonalityTitleAndTemplate(resultType.code, scores);
@@ -558,7 +558,7 @@ Text: [对话或旁白内容]`;
     setComicGenerationProgress(0);
     setComicImageUrls([]);
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GEMINI_API_KEY || (import.meta.env && import.meta.env.VITE_GEMINI_API_KEY);
       if (!apiKey) {
         throw new Error('API_KEY_MISSING');
       }
