@@ -8,6 +8,7 @@ import {
   RotateCcw, 
   Share2, 
   Heart, 
+  MessageCircle,
   Sparkles,
   ArrowRight,
   ArrowLeft,
@@ -376,7 +377,7 @@ export default function App() {
     if (!referenceImage) return;
     setIsDesigning(true);
     try {
-      let apiKey = process.env.GEMINI_API_KEY;
+      let apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
       if (apiKey) apiKey = apiKey.trim();
       
       if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.includes('TODO')) {
@@ -455,7 +456,7 @@ Requirements:
   const generateComicScript = async () => {
     setIsGeneratingScript(true);
     try {
-      let apiKey = process.env.GEMINI_API_KEY;
+      let apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
       if (apiKey) apiKey = apiKey.trim();
       
       if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.includes('TODO')) {
@@ -571,7 +572,7 @@ Text: [对话或旁白内容]`;
     setComicGenerationProgress(0);
     setComicImageUrls([]);
     try {
-      let apiKey = process.env.GEMINI_API_KEY;
+      let apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
       if (apiKey) apiKey = apiKey.trim();
       
       if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.includes('TODO')) {
@@ -1284,13 +1285,19 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                           <motion.div 
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="p-4 bg-[#ffffff] rounded-[2.5rem] border-4 border-[#FFE66D] shadow-xl overflow-hidden"
-                            style={{ backgroundColor: '#ffffff', borderColor: '#FFE66D' }}
+                            className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100"
                           >
-                            <div className="mb-4 flex justify-between items-center px-2">
-                              <h3 className="font-black text-lg flex items-center gap-2" style={{ color: '#2D2D2D' }}>
-                                <Star className="text-[#FFE66D]" size={20} style={{ color: '#FFE66D' }} /> 专属性格漫画
-                              </h3>
+                            {/* Xiaohongshu Style Header */}
+                            <div className="p-4 flex items-center justify-between border-b border-gray-50" data-html2canvas-ignore>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFE66D] to-[#FFD700] flex items-center justify-center text-white font-black text-xs shadow-sm">
+                                  {petName.substring(0, 1)}
+                                </div>
+                                <div>
+                                  <h3 className="font-black text-sm text-gray-800">{petName} 的专属漫画</h3>
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">AI 漫画工坊 · 创作于刚才</p>
+                                </div>
+                              </div>
                               <button 
                                 onClick={async () => {
                                   const comicElement = document.getElementById('pet-comic-container');
@@ -1317,107 +1324,59 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                                     }
                                   }
                                 }}
-                                className="text-xs font-black text-[#9ca3af] hover:text-[#2D2D2D] flex items-center gap-1"
-                                style={{ color: '#9ca3af' }}
+                                className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-[#FFE66D]/10 hover:text-[#2D2D2D] transition-all"
                                 data-html2canvas-ignore
                               >
-                                <Share2 size={14} /> 保存当前页
+                                <Share2 size={18} />
                               </button>
                             </div>
                             
-                            {/* Comic Image with Text Overlays - Paginated View */}
+                            {/* Comic Image - Main Carousel Area */}
                             <div className="relative">
-                              {/* Orientation Hint */}
-                              <div className="absolute -top-10 left-0 right-0 flex justify-center pointer-events-none" data-html2canvas-ignore>
-                                <motion.div 
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  className="bg-black/5 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1.5"
-                                >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-[#FFE66D] animate-pulse" />
-                                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                    建议横屏观看以获得最佳体验
-                                  </span>
-                                </motion.div>
-                              </div>
-                              <div id="pet-comic-container" className="relative w-full aspect-square rounded-2xl overflow-hidden border-4" style={{ backgroundColor: '#ffffff', borderColor: '#ffffff', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+                              <div id="pet-comic-container" className="relative w-full aspect-square bg-white">
                                 <motion.div 
                                   key={currentComicPage}
-                                  initial={{ opacity: 0, x: 20 }}
-                                  animate={{ opacity: 1, x: 0 }}
+                                  initial={{ opacity: 0 }}
+                                  animate={{ opacity: 1 }}
+                                  transition={{ duration: 0.3 }}
                                   className="w-full h-full relative"
                                 >
-                                  {/* Each page is now a full image, no more cropping distortion */}
-                                  <div className="absolute inset-0 overflow-hidden">
-                                    {comicImageUrls[currentComicPage] ? (
-                                      <img 
-                                        src={comicImageUrls[currentComicPage]} 
-                                        alt={`Panel ${currentComicPage + 1}`} 
-                                        className="w-full h-full object-cover"
-                                        referrerPolicy="no-referrer"
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: '#f9fafb' }}>
-                                        <Loader2 className="animate-spin" size={48} style={{ color: '#d1d5db' }} />
-                                      </div>
-                                    )}
-                                  </div>
-                                  
-                                  {/* Text Overlay for current panel */}
-                                  <div className="absolute top-4 left-4 right-4 pointer-events-none">
-                                    <div className="px-4 py-2 rounded-2xl border shadow-lg inline-block max-w-[90%]" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderColor: '#f3f4f6' }}>
-                                      <p className="text-sm md:text-base leading-tight font-black break-words" style={{ color: '#1f2937' }}>
-                                        {parseComicScript(comicScript)[currentComicPage]?.speaker && (
-                                          <span className="text-[10px] mr-1 opacity-70" style={{ color: '#f59e0b' }}>
-                                            [{parseComicScript(comicScript)[currentComicPage]?.speaker}]
-                                          </span>
-                                        )}
-                                        {parseComicScript(comicScript)[currentComicPage]?.text}
-                                      </p>
+                                  {comicImageUrls[currentComicPage] ? (
+                                    <img 
+                                      src={comicImageUrls[currentComicPage]} 
+                                      alt={`Panel ${currentComicPage + 1}`} 
+                                      className="w-full h-full object-cover"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-50">
+                                      <Loader2 className="animate-spin text-gray-200" size={48} />
                                     </div>
-                                  </div>
+                                  )}
 
-                                  {/* Page Indicator */}
-                                  <div className="absolute bottom-4 right-4 px-3 py-1 rounded-full text-[10px] font-black tracking-widest" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', color: '#ffffff' }}>
+                                  {/* Page Indicator Overlay */}
+                                  <div className="absolute top-4 right-4 px-2.5 py-1 rounded-full text-[10px] font-black tracking-widest bg-black/30 backdrop-blur-md text-white border border-white/20" data-html2canvas-ignore>
                                     {currentComicPage + 1} / 6
                                   </div>
 
                                   {/* Pet Card Overlay for the final panel */}
                                   {currentComicPage === 5 && (
-                                    <div className="absolute bottom-12 left-4 pointer-events-none">
+                                    <div className="absolute bottom-6 left-6 right-6 pointer-events-none">
                                       <motion.div 
-                                        initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: 0.5 }}
-                                        className="bg-white/90 backdrop-blur-sm p-4 rounded-2xl border-2 border-[#FFE66D] shadow-xl w-48 space-y-2"
+                                        className="bg-white/80 backdrop-blur-xl p-4 rounded-3xl border border-white/50 shadow-2xl flex items-center gap-4"
                                       >
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <div className="w-2 h-2 rounded-full bg-[#fb7185]" />
-                                          <span className="text-[10px] font-black tracking-widest text-[#9ca3af] uppercase">Pet ID Card</span>
+                                        <div className="w-12 h-12 rounded-2xl bg-[#FFE66D] flex items-center justify-center shrink-0 shadow-lg shadow-[#FFE66D]/20">
+                                          <Star size={24} className="text-white" />
                                         </div>
-                                        <div className="space-y-1">
-                                          <div className="flex justify-between items-center">
-                                            <span className="text-[8px] font-bold text-[#9ca3af]">NAME</span>
-                                            <span className="text-xs font-black text-[#2D2D2D]">{petName}</span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 mb-0.5">
+                                            <span className="text-[10px] font-black tracking-widest text-[#fb7185] uppercase">Personality Card</span>
                                           </div>
-                                          <div className="flex justify-between items-center">
-                                            <span className="text-[8px] font-bold text-[#9ca3af]">MBTI</span>
-                                            <span className="text-xs font-black text-[#2D2D2D]">{resultType.code}</span>
-                                          </div>
-                                          <div className="flex justify-between items-center">
-                                            <span className="text-[8px] font-bold text-[#9ca3af]">ZODIAC</span>
-                                            <span className="text-xs font-black text-[#2D2D2D]">{zodiac.name}</span>
-                                          </div>
-                                          <div className="flex justify-between items-center">
-                                            <span className="text-[8px] font-bold text-[#9ca3af]">TITLE</span>
-                                            <span className="text-xs font-black text-[#2D2D2D]">{personalityTitle}</span>
-                                          </div>
-                                          <div className="pt-1 border-t border-dashed border-[#f3f4f6]">
-                                            <div className="flex justify-between items-center">
-                                              <span className="text-[8px] font-bold text-[#9ca3af]">CLINGINESS</span>
-                                              <span className="text-xs font-black text-[#fb7185]">{indices.clinginess}%</span>
-                                            </div>
-                                          </div>
+                                          <p className="text-sm font-black text-gray-800 truncate">{petName} · {resultType.code}</p>
+                                          <p className="text-[10px] font-bold text-gray-400 truncate uppercase">{personalityTitle}</p>
                                         </div>
                                       </motion.div>
                                     </div>
@@ -1425,81 +1384,78 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                                 </motion.div>
                               </div>
 
-                              {/* Navigation Buttons */}
-                              <div className="flex justify-between items-center mt-6 px-2" data-html2canvas-ignore>
-                                <button
+                              {/* Navigation Dots Overlay */}
+                              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 pointer-events-none" data-html2canvas-ignore>
+                                {[0, 1, 2, 3, 4, 5].map(i => (
+                                  <div
+                                    key={i}
+                                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                                      currentComicPage === i ? 'bg-white w-4' : 'bg-white/40'
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+
+                              {/* Invisible Click Areas for Navigation */}
+                              <div className="absolute inset-0 flex" data-html2canvas-ignore>
+                                <div 
+                                  className="w-1/2 h-full cursor-w-resize" 
                                   onClick={() => setCurrentComicPage(prev => Math.max(0, prev - 1))}
-                                  disabled={currentComicPage === 0}
-                                  className={`p-4 rounded-2xl border-2 transition-all ${
-                                    currentComicPage === 0 
-                                    ? 'border-gray-50 text-gray-200 cursor-not-allowed' 
-                                    : 'border-gray-100 text-gray-400 hover:border-[#FFE66D] hover:text-[#2D2D2D] active:scale-95'
-                                  }`}
-                                >
-                                  <ArrowLeft size={24} />
-                                </button>
-
-                                <div className="flex gap-2">
-                                  {[0, 1, 2, 3, 4, 5].map(i => (
-                                    <button
-                                      key={i}
-                                      onClick={() => {
-                                        if (comicImageUrls[i]) setCurrentComicPage(i);
-                                      }}
-                                      disabled={!comicImageUrls[i]}
-                                      className={`w-2.5 h-2.5 rounded-full transition-all ${
-                                        currentComicPage === i ? 'bg-[#FFE66D] w-6' : 'bg-gray-200'
-                                      } ${!comicImageUrls[i] ? 'opacity-30' : ''}`}
-                                    />
-                                  ))}
-                                </div>
-
-                                <button
+                                />
+                                <div 
+                                  className="w-1/2 h-full cursor-e-resize" 
                                   onClick={() => setCurrentComicPage(prev => Math.min(5, prev + 1))}
-                                  disabled={currentComicPage === 5 || !comicImageUrls[currentComicPage + 1]}
-                                  className={`p-4 rounded-2xl border-2 transition-all ${
-                                    currentComicPage === 5 || !comicImageUrls[currentComicPage + 1]
-                                    ? 'border-gray-50 text-gray-200 cursor-not-allowed' 
-                                    : 'border-gray-100 text-gray-400 hover:border-[#FFE66D] hover:text-[#2D2D2D] active:scale-95'
-                                  }`}
-                                >
-                                  <ArrowRight size={24} />
-                                </button>
+                                />
                               </div>
                             </div>
 
-                            {/* Panel Text Guide (Optional helper) */}
-                            <div className="mt-8 space-y-4" data-html2canvas-ignore>
-                              <div className="flex items-center gap-2 px-2">
-                                <FileText size={16} className="text-gray-400" />
-                                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">剧本详情</h4>
+                            {/* Xiaohongshu Style Content Area */}
+                            <div className="p-6 space-y-4">
+                              {/* Interaction Bar */}
+                              <div className="flex items-center gap-6" data-html2canvas-ignore>
+                                <button className="flex flex-col items-center gap-1 group">
+                                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-red-50 group-hover:text-red-500 transition-all">
+                                    <Heart size={22} />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-gray-400">喜欢</span>
+                                </button>
+                                <button className="flex flex-col items-center gap-1 group">
+                                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">
+                                    <MessageCircle size={22} />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-gray-400">评论</span>
+                                </button>
+                                <button className="flex flex-col items-center gap-1 group">
+                                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-yellow-50 group-hover:text-yellow-600 transition-all">
+                                    <Star size={22} />
+                                  </div>
+                                  <span className="text-[10px] font-bold text-gray-400">收藏</span>
+                                </button>
                               </div>
-                              <div className="grid grid-cols-1 gap-3">
-                                {parseComicScript(comicScript).map((panel, idx) => (
-                                  <button 
-                                    key={idx}
-                                    onClick={() => {
-                                      setCurrentComicPage(idx);
-                                      showToastWithMsg(`已跳转至第 ${idx + 1} 页`);
-                                    }}
-                                    className={`p-4 rounded-2xl border-2 text-left transition-all flex items-start gap-4 ${
-                                      currentComicPage === idx 
-                                      ? 'border-[#FFE66D] bg-[#FFE66D]/5 shadow-sm' 
-                                      : 'border-gray-50 bg-gray-50/50 hover:border-gray-100'
-                                    }`}
-                                  >
-                                    <span className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
-                                      currentComicPage === idx ? 'bg-[#FFE66D] text-white' : 'bg-gray-100 text-gray-300'
-                                    }`}>
-                                      {idx + 1}
+
+                              {/* Text Content */}
+                              <div className="space-y-2">
+                                <h4 className="text-lg font-black text-gray-800 leading-tight">
+                                  {petName} 的日常：第 {currentComicPage + 1} 幕
+                                </h4>
+                                <div className="flex items-start gap-2">
+                                  {parseComicScript(comicScript)[currentComicPage]?.speaker && (
+                                    <span className="shrink-0 px-2 py-0.5 rounded-md bg-[#FFE66D]/20 text-[#b45309] text-[10px] font-black uppercase tracking-widest mt-0.5">
+                                      {parseComicScript(comicScript)[currentComicPage]?.speaker}
                                     </span>
-                                    <p className={`text-sm font-bold leading-snug ${
-                                      currentComicPage === idx ? 'text-gray-800' : 'text-gray-500'
-                                    }`}>
-                                      {panel.text}
-                                    </p>
-                                  </button>
-                                ))}
+                                  )}
+                                  <p className="text-sm font-bold text-gray-600 leading-relaxed">
+                                    {parseComicScript(comicScript)[currentComicPage]?.text}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Hashtags */}
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                <span className="text-xs font-bold text-blue-500">#AI宠物漫画</span>
+                                <span className="text-xs font-bold text-blue-500">#{petType === 'dog' ? '狗狗' : '猫咪'}日常</span>
+                                <span className="text-xs font-bold text-blue-500">#MBTI{resultType.code}</span>
+                                <span className="text-xs font-bold text-blue-500">#治愈系</span>
                               </div>
                             </div>
                           </motion.div>
