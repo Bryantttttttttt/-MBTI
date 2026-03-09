@@ -376,8 +376,12 @@ export default function App() {
     if (!referenceImage) return;
     setIsDesigning(true);
     try {
-      const apiKey = process.env.GEMINI_API_KEY || (import.meta.env && import.meta.env.VITE_GEMINI_API_KEY);
-      if (!apiKey) throw new Error('API_KEY_MISSING');
+      let apiKey = process.env.GEMINI_API_KEY;
+      if (apiKey) apiKey = apiKey.trim();
+      
+      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.includes('TODO')) {
+        throw new Error('API_KEY_MISSING');
+      }
       const ai = new GoogleGenAI({ apiKey });
       
       // Image is already resized in handleImageUpload
@@ -436,6 +440,8 @@ Requirements:
       const errorStr = JSON.stringify(error);
       if (error?.message === 'API_KEY_MISSING') {
         showToastWithMsg('API密钥配置缺失，请检查环境变量');
+      } else if (errorStr.includes('API_KEY_INVALID')) {
+        showToastWithMsg('API密钥无效，请检查Key是否填错或有空格');
       } else if (errorStr.includes('Safety') || error?.message?.includes('Safety')) {
         showToastWithMsg('内容触发安全策略，请尝试更换照片或描述');
       } else {
@@ -449,8 +455,12 @@ Requirements:
   const generateComicScript = async () => {
     setIsGeneratingScript(true);
     try {
-      const apiKey = process.env.GEMINI_API_KEY || (import.meta.env && import.meta.env.VITE_GEMINI_API_KEY);
-      if (!apiKey) throw new Error('API_KEY_MISSING');
+      let apiKey = process.env.GEMINI_API_KEY;
+      if (apiKey) apiKey = apiKey.trim();
+      
+      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.includes('TODO')) {
+        throw new Error('API_KEY_MISSING');
+      }
       const ai = new GoogleGenAI({ apiKey });
       const { title } = getPersonalityTitleAndTemplate(resultType.code, scores);
       const breedName = petType === 'dog' 
@@ -505,8 +515,11 @@ Text: [对话或旁白内容]`;
       throw new Error('未能生成剧本');
     } catch (error: any) {
       console.error('Script generation failed:', error);
+      const errorStr = JSON.stringify(error);
       if (error?.message === 'API_KEY_MISSING') {
         showToastWithMsg('API密钥配置缺失，请检查环境变量');
+      } else if (errorStr.includes('API_KEY_INVALID')) {
+        showToastWithMsg('API密钥无效，请检查Key是否填错或有空格');
       } else {
         showToastWithMsg(`剧本生成失败: ${error?.message || '未知错误'}`);
       }
@@ -558,8 +571,10 @@ Text: [对话或旁白内容]`;
     setComicGenerationProgress(0);
     setComicImageUrls([]);
     try {
-      const apiKey = process.env.GEMINI_API_KEY || (import.meta.env && import.meta.env.VITE_GEMINI_API_KEY);
-      if (!apiKey) {
+      let apiKey = process.env.GEMINI_API_KEY;
+      if (apiKey) apiKey = apiKey.trim();
+      
+      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.includes('TODO')) {
         throw new Error('API_KEY_MISSING');
       }
       const ai = new GoogleGenAI({ apiKey });
@@ -600,13 +615,14 @@ Anatomy: The ${petType} MUST have exactly 4 legs. Ensure anatomically correct po
 
 Scene Description: ${panelScript.text}
 
-CRITICAL INSTRUCTIONS:
-- ABSOLUTELY NO TEXT, LETTERS, NUMBERS, OR SYMBOLS in the image. 
-- DO NOT draw speech bubbles, thought bubbles, or any labels.
-- If the scene description mentions names or words, DO NOT draw them.
+CRITICAL INSTRUCTIONS - READ CAREFULLY:
+- ABSOLUTELY NO TEXT, NO LETTERS, NO NUMBERS, NO SYMBOLS, NO CAPTIONS, NO WATERMARKS.
+- DO NOT draw speech bubbles, thought bubbles, or any UI elements.
+- The image must be 100% PURELY VISUAL.
+- If the scene description mentions words or names, DO NOT draw them.
 - ${isLastPanel ? `This is the FINAL panel. It MUST include a "Pet ID Card" or "Personality Card" held by the owner or shown next to the pet. The ID card MUST BE COMPLETELY BLANK (no text, no letters, no numbers). Style: cute pet ID card, rounded corners, pastel colors, small paw decorations.` : 'Focus entirely on visual storytelling through actions and expressions.'}
 
-The output must be a single, full-page illustration for this specific panel.`;
+NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, blurry, low quality, extra limbs, distorted anatomy.`;
 
         const contents: any = {
           parts: [{ text: prompt }]
@@ -675,6 +691,8 @@ The output must be a single, full-page illustration for this specific panel.`;
       
       if (error?.message === 'API_KEY_MISSING') {
         showToastWithMsg('API密钥配置缺失，请检查环境变量');
+      } else if (errorStr.includes('API_KEY_INVALID')) {
+        showToastWithMsg('API密钥无效，请检查Key是否填错或有空格');
       } else if (isRateLimit) {
         showToastWithMsg('生成速度过快，请稍等片刻再试哦');
       } else if (errorStr.includes('Safety') || error?.message?.includes('Safety')) {
@@ -1309,6 +1327,19 @@ The output must be a single, full-page illustration for this specific panel.`;
                             
                             {/* Comic Image with Text Overlays - Paginated View */}
                             <div className="relative">
+                              {/* Orientation Hint */}
+                              <div className="absolute -top-10 left-0 right-0 flex justify-center pointer-events-none" data-html2canvas-ignore>
+                                <motion.div 
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="bg-black/5 backdrop-blur-sm px-3 py-1 rounded-full flex items-center gap-1.5"
+                                >
+                                  <div className="w-1.5 h-1.5 rounded-full bg-[#FFE66D] animate-pulse" />
+                                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                    建议横屏观看以获得最佳体验
+                                  </span>
+                                </motion.div>
+                              </div>
                               <div id="pet-comic-container" className="relative w-full aspect-square rounded-2xl overflow-hidden border-4" style={{ backgroundColor: '#ffffff', borderColor: '#ffffff', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
                                 <motion.div 
                                   key={currentComicPage}
