@@ -30,7 +30,8 @@ import {
   Image as ImageIcon,
   Infinity as InfinityIcon,
   FileText,
-  Edit3
+  Edit3,
+  Download
 } from 'lucide-react';
 import { 
   QUESTIONS, 
@@ -380,7 +381,8 @@ export default function App() {
       let apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
       if (apiKey) apiKey = apiKey.trim();
       
-      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.includes('TODO')) {
+      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey === '' || apiKey.includes('TODO')) {
+        console.error('Character Sheet: Gemini API Key is missing');
         throw new Error('API_KEY_MISSING');
       }
       const ai = new GoogleGenAI({ apiKey });
@@ -440,7 +442,7 @@ Requirements:
       console.error('Character design failed:', error);
       const errorStr = JSON.stringify(error);
       if (error?.message === 'API_KEY_MISSING') {
-        showToastWithMsg('API密钥配置缺失，请检查环境变量');
+        showToastWithMsg('API密钥未配置。请在 AI Studio 设置中添加 Gemini API Key。');
       } else if (errorStr.includes('API_KEY_INVALID')) {
         showToastWithMsg('API密钥无效，请检查Key是否填错或有空格');
       } else if (errorStr.includes('Safety') || error?.message?.includes('Safety')) {
@@ -459,7 +461,8 @@ Requirements:
       let apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
       if (apiKey) apiKey = apiKey.trim();
       
-      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.includes('TODO')) {
+      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey === '' || apiKey.includes('TODO')) {
+        console.error('Comic Script: Gemini API Key is missing');
         throw new Error('API_KEY_MISSING');
       }
       const ai = new GoogleGenAI({ apiKey });
@@ -518,7 +521,7 @@ Text: [对话或旁白内容]`;
       console.error('Script generation failed:', error);
       const errorStr = JSON.stringify(error);
       if (error?.message === 'API_KEY_MISSING') {
-        showToastWithMsg('API密钥配置缺失，请检查环境变量');
+        showToastWithMsg('API密钥未配置。请在 AI Studio 设置中添加 Gemini API Key。');
       } else if (errorStr.includes('API_KEY_INVALID')) {
         showToastWithMsg('API密钥无效，请检查Key是否填错或有空格');
       } else {
@@ -575,7 +578,8 @@ Text: [对话或旁白内容]`;
       let apiKey = process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
       if (apiKey) apiKey = apiKey.trim();
       
-      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey.includes('TODO')) {
+      if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey === '' || apiKey.includes('TODO')) {
+        console.error('Comic Generation: Gemini API Key is missing');
         throw new Error('API_KEY_MISSING');
       }
       const ai = new GoogleGenAI({ apiKey });
@@ -691,7 +695,7 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                          errorStr.includes('429');
       
       if (error?.message === 'API_KEY_MISSING') {
-        showToastWithMsg('API密钥配置缺失，请检查环境变量');
+        showToastWithMsg('API密钥未配置。请在 AI Studio 设置中添加 Gemini API Key。');
       } else if (errorStr.includes('API_KEY_INVALID')) {
         showToastWithMsg('API密钥无效，请检查Key是否填错或有空格');
       } else if (isRateLimit) {
@@ -705,6 +709,94 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
     } finally {
       setIsGeneratingComic(false);
       setComicGenerationProgress(0);
+    }
+  };
+
+  const downloadFullComic = async () => {
+    if (comicImageUrls.length < 6) {
+      showToastWithMsg('请等待所有漫画生成完毕');
+      return;
+    }
+    
+    setIsGeneratingPDF(true);
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('无法创建画布');
+
+      // Load all images first
+      const images = await Promise.all(comicImageUrls.map(url => {
+        return new Promise<HTMLImageElement>((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = url;
+        });
+      }));
+
+      // Layout: 2 columns, 3 rows
+      const padding = 40;
+      const gap = 20;
+      const imgWidth = images[0].width;
+      const imgHeight = images[0].height;
+      
+      canvas.width = imgWidth * 2 + gap + padding * 2;
+      canvas.height = imgHeight * 3 + gap * 2 + padding * 2 + 100; // Extra space for header
+
+      // Draw background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw Header
+      ctx.fillStyle = '#2D2D2D';
+      ctx.font = 'bold 40px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${petName} 的专属漫画全集`, canvas.width / 2, padding + 40);
+      
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '20px sans-serif';
+      ctx.fillText(`AI 漫画工坊 · 性格分析报告专属定制`, canvas.width / 2, padding + 80);
+
+      // Draw images
+      images.forEach((img, i) => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const x = padding + col * (imgWidth + gap);
+        const y = padding + 120 + row * (imgHeight + gap);
+        
+        // Draw shadow/border for each panel
+        ctx.shadowColor = 'rgba(0,0,0,0.1)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 4;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x - 2, y - 2, imgWidth + 4, imgHeight + 4);
+        ctx.shadowBlur = 0; // Reset shadow
+
+        ctx.drawImage(img, x, y, imgWidth, imgHeight);
+        
+        // Draw panel number
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(x + 10, y + 10, 40, 40);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText((i + 1).toString(), x + 30, y + 30);
+      });
+
+      const dataUrl = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `FullComic_${petName}.png`;
+      link.href = dataUrl;
+      link.click();
+      showToastWithMsg('全集漫画已保存');
+    } catch (err) {
+      console.error('Download full comic error:', err);
+      showToastWithMsg('保存失败，请重试');
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
 
@@ -772,9 +864,9 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="max-w-2xl mx-auto px-6 py-12 flex flex-col items-center text-center"
+            className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col items-center text-center"
           >
-            <div className="mb-8 relative">
+            <div className="mb-6 sm:mb-8 relative">
               <motion.div
                 animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.05, 1] }}
                 transition={{ repeat: Infinity, duration: 4 }}
@@ -946,9 +1038,9 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
-            className="max-w-xl mx-auto px-6 py-12"
+            className="max-w-xl mx-auto px-4 sm:px-6 py-8 sm:py-12"
           >
-            <div className="mb-12">
+            <div className="mb-8 sm:mb-12">
               <div className="flex justify-between items-end mb-4">
                 <div>
                   <span className="text-xs font-black text-[#FF6B6B] uppercase tracking-[0.3em]">Deep Analysis</span>
@@ -1038,90 +1130,90 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
             key="result"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="max-w-2xl mx-auto px-6 py-12"
+            className="max-w-2xl mx-auto px-3 sm:px-6 py-6 sm:py-12"
           >
-            <div ref={reportRef} className="rounded-[3rem] overflow-hidden border-8 relative" style={{ backgroundColor: '#ffffff', borderColor: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <div ref={reportRef} className="rounded-[2rem] sm:rounded-[3rem] overflow-hidden border-4 sm:border-8 relative" style={{ backgroundColor: '#ffffff', borderColor: '#ffffff', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
               <div 
-                className="p-10 relative overflow-hidden"
+                className="p-6 sm:p-10 relative overflow-hidden"
                 style={{ backgroundColor: resultType.color, color: '#ffffff' }}
               >
                 <div className="relative z-10">
-                  <div className="flex items-center gap-3 mb-6">
-                    <span className="px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.3em] uppercase border" style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                    <span className="px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-[10px] font-black tracking-[0.2em] sm:tracking-[0.3em] uppercase border" style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', borderColor: 'rgba(255, 255, 255, 0.3)' }}>
                       SPIRITUAL REPORT
                     </span>
-                    <span className="px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.3em] uppercase border" style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                    <span className="px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-[10px] font-black tracking-[0.2em] sm:tracking-[0.3em] uppercase border" style={{ backgroundColor: 'rgba(0, 0, 0, 0.1)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                       {zodiac.name}
                     </span>
-                    <span className="px-4 py-1.5 rounded-full text-[10px] font-black tracking-[0.3em] uppercase border" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
+                    <span className="px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[9px] sm:text-[10px] font-black tracking-[0.2em] sm:tracking-[0.3em] uppercase border" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)', borderColor: 'rgba(255, 255, 255, 0.1)' }}>
                       {petGender === 'male' ? '公' : petGender === 'female' ? '母' : '不确定'}
                     </span>
                   </div>
-                  <h1 className="text-6xl font-black mb-4 tracking-tighter" style={{ color: '#ffffff' }}>{petName}</h1>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-3xl font-black px-4 py-1 rounded-xl" style={{ backgroundColor: '#ffffff', color: '#000000', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+                  <h1 className="text-4xl sm:text-6xl font-black mb-3 sm:mb-4 tracking-tighter" style={{ color: '#ffffff' }}>{petName}</h1>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <span className="text-xl sm:text-3xl font-black px-3 sm:px-4 py-1 rounded-lg sm:rounded-xl" style={{ backgroundColor: '#ffffff', color: '#000000', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
                       {zodiac.modifier}{resultType.elementModifier}{petType === 'dog' ? '犬' : petType === 'cat' ? '猫' : '灵'}
                     </span>
-                    <span className="text-xl font-black px-4 py-1 rounded-xl" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)', color: '#ffffff' }}>
+                    <span className="text-sm sm:text-xl font-black px-3 sm:px-4 py-1 rounded-lg sm:rounded-xl" style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)', color: '#ffffff' }}>
                       {resultType.genderLabel}
                     </span>
-                    <span className="text-2xl font-mono font-bold opacity-80" style={{ color: '#ffffff' }}>{resultType.code}</span>
+                    <span className="text-lg sm:text-2xl font-mono font-bold opacity-80" style={{ color: '#ffffff' }}>{resultType.code}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-10 space-y-10">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="p-4 rounded-[2rem] text-center border" style={{ backgroundColor: '#f9fafb', borderColor: '#f3f4f6' }}>
-                    <div className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#d1d5db' }}>五行属性</div>
-                    <div className="text-xl font-black" style={{ color: '#2D2D2D' }}>{wuXing.name}</div>
+              <div className="p-6 sm:p-10 space-y-8 sm:space-y-10">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                  <div className="p-3 sm:p-4 rounded-2xl sm:rounded-[2rem] text-center border" style={{ backgroundColor: '#f9fafb', borderColor: '#f3f4f6' }}>
+                    <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest mb-1 sm:mb-2" style={{ color: '#d1d5db' }}>五行属性</div>
+                    <div className="text-sm sm:text-xl font-black" style={{ color: '#2D2D2D' }}>{wuXing.name}</div>
                   </div>
-                  <div className="p-4 rounded-[2rem] text-center border" style={{ backgroundColor: '#f9fafb', borderColor: '#f3f4f6' }}>
-                    <div className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#d1d5db' }}>幸运色</div>
-                    <div className="text-xl font-black" style={{ color: '#2D2D2D' }}>{zodiac.luckyColor}</div>
+                  <div className="p-3 sm:p-4 rounded-2xl sm:rounded-[2rem] text-center border" style={{ backgroundColor: '#f9fafb', borderColor: '#f3f4f6' }}>
+                    <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest mb-1 sm:mb-2" style={{ color: '#d1d5db' }}>幸运色</div>
+                    <div className="text-sm sm:text-xl font-black" style={{ color: '#2D2D2D' }}>{zodiac.luckyColor}</div>
                   </div>
-                  <div className="p-4 rounded-[2rem] text-center border" style={{ backgroundColor: '#f9fafb', borderColor: '#f3f4f6' }}>
-                    <div className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#d1d5db' }}>守护元素</div>
-                    <div className="text-xl font-black" style={{ color: '#2D2D2D' }}>{zodiac.element}</div>
+                  <div className="p-3 sm:p-4 rounded-2xl sm:rounded-[2rem] text-center border" style={{ backgroundColor: '#f9fafb', borderColor: '#f3f4f6' }}>
+                    <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest mb-1 sm:mb-2" style={{ color: '#d1d5db' }}>守护元素</div>
+                    <div className="text-sm sm:text-xl font-black" style={{ color: '#2D2D2D' }}>{zodiac.element}</div>
                   </div>
                 </div>
 
                 <section>
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#FFE66D', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
-                      <Sparkles size={20} style={{ color: '#ffffff' }} />
+                  <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#FFE66D', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+                      <Sparkles size={18} className="sm:size-[20px]" style={{ color: '#ffffff' }} />
                     </div>
-                    <h2 className="text-2xl font-black" style={{ color: '#2D2D2D' }}>人格深度解析</h2>
+                    <h2 className="text-xl sm:text-2xl font-black" style={{ color: '#2D2D2D' }}>人格深度解析</h2>
                   </div>
-                  <div className="space-y-4">
-                    <p className="text-xl font-bold leading-snug italic border-l-4 pl-6" style={{ color: '#374151', borderLeftColor: '#FFE66D' }}>
+                  <div className="space-y-3 sm:space-y-4">
+                    <p className="text-lg sm:text-xl font-bold leading-snug italic border-l-4 pl-4 sm:pl-6" style={{ color: '#374151', borderLeftColor: '#FFE66D' }}>
                       "{resultType.summary}"
                     </p>
-                    <p className="leading-relaxed font-medium" style={{ color: '#6b7280' }}>
+                    <p className="text-sm sm:text-base leading-relaxed font-medium" style={{ color: '#6b7280' }}>
                       {resultType.description} {zodiac.trait}。
                     </p>
                   </div>
                 </section>
 
-                <section className="space-y-6">
+                <section className="space-y-4 sm:space-y-6">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#dbeafe' }}>
-                      <Zap size={20} style={{ color: '#3b82f6' }} />
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#dbeafe' }}>
+                      <Zap size={18} className="sm:size-[20px]" style={{ color: '#3b82f6' }} />
                     </div>
-                    <h2 className="text-2xl font-black" style={{ color: '#2D2D2D' }}>灵魂指数</h2>
+                    <h2 className="text-xl sm:text-2xl font-black" style={{ color: '#2D2D2D' }}>灵魂指数</h2>
                   </div>
-                  <div className="space-y-5">
+                  <div className="space-y-4 sm:space-y-5">
                     {[
                       { label: "情绪稳定指数", value: indices.stability, color: "#34d399" },
                       { label: "粘人撒娇指数", value: indices.clinginess, color: "#fb7185" },
                       { label: "拆家破坏指数", value: indices.destructiveness, color: "#fb923c" }
                     ].map((idx, i) => (
-                      <div key={i} className="space-y-2">
-                        <div className="flex justify-between text-sm font-black uppercase tracking-widest">
+                      <div key={i} className="space-y-1.5 sm:space-y-2">
+                        <div className="flex justify-between text-[10px] sm:text-sm font-black uppercase tracking-widest">
                           <span style={{ color: '#9ca3af' }}>{idx.label}</span>
                           <span style={{ color: '#374151' }}>{idx.value}%</span>
                         </div>
-                        <div className="h-2.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: '#f3f4f6' }}>
+                        <div className="h-2 sm:h-2.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: '#f3f4f6' }}>
                           <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: `${idx.value}%` }}
@@ -1135,23 +1227,23 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                   </div>
                 </section>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-6 rounded-[2.5rem] border" style={{ backgroundColor: '#faf5ff', borderColor: '#f3e8ff' }}>
-                    <div className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#d8b4fe' }}>前世身份</div>
-                    <div className="text-xl font-black" style={{ color: '#7e22ce' }}>{pastLife}</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div className="p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border" style={{ backgroundColor: '#faf5ff', borderColor: '#f3e8ff' }}>
+                    <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest mb-1 sm:mb-2" style={{ color: '#d8b4fe' }}>前世身份</div>
+                    <div className="text-lg sm:text-xl font-black" style={{ color: '#7e22ce' }}>{pastLife}</div>
                   </div>
-                  <div className="p-6 rounded-[2.5rem] border" style={{ backgroundColor: '#fffbeb', borderColor: '#fef3c7' }}>
-                    <div className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#fcd34d' }}>今日运势</div>
-                    <div className="text-xl font-black" style={{ color: '#b45309' }}>{fortune}</div>
+                  <div className="p-4 sm:p-6 rounded-2xl sm:rounded-[2.5rem] border" style={{ backgroundColor: '#fffbeb', borderColor: '#fef3c7' }}>
+                    <div className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest mb-1 sm:mb-2" style={{ color: '#fcd34d' }}>今日运势</div>
+                    <div className="text-lg sm:text-xl font-black" style={{ color: '#b45309' }}>{fortune}</div>
                   </div>
                 </div>
 
-                <div className="p-8 rounded-[2.5rem] border text-center" style={{ backgroundColor: '#f9fafb', borderColor: '#f3f4f6' }}>
-                  <div className="flex justify-center gap-2 mb-4">
-                    <Shield size={16} style={{ color: '#d1d5db' }} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: '#d1d5db' }}>Algorithm Verification</span>
+                <div className="p-6 sm:p-8 rounded-2xl sm:rounded-[2.5rem] border text-center" style={{ backgroundColor: '#f9fafb', borderColor: '#f3f4f6' }}>
+                  <div className="flex justify-center gap-2 mb-3 sm:mb-4">
+                    <Shield size={14} className="sm:size-[16px]" style={{ color: '#d1d5db' }} />
+                    <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: '#d1d5db' }}>Algorithm Verification</span>
                   </div>
-                  <p className="text-xs leading-relaxed font-medium" style={{ color: '#9ca3af' }}>
+                  <p className="text-[10px] sm:text-xs leading-relaxed font-medium" style={{ color: '#9ca3af' }}>
                     本报告基于行为心理学（MBTI模型）、习惯稳定性理论与星象倾向模型交叉校验生成。
                   </p>
                 </div>
@@ -1159,7 +1251,7 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                 <div className="pt-6 flex flex-col items-center gap-6">
                   <div className="flex flex-col gap-6 w-full">
                     {/* AI Manga Workshop Section */}
-                    <section className="p-8 rounded-[2.5rem] border-4 space-y-6" style={{ backgroundColor: '#ffffff', borderColor: '#FFE66D', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+                    <section className="p-8 rounded-[2.5rem] border-4 space-y-6" style={{ backgroundColor: '#ffffff', borderColor: '#FFE66D', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }} data-html2canvas-ignore>
                       <div className="flex items-center gap-3 mb-2">
                         <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#fffbeb' }}>
                           <Sparkles size={20} style={{ color: '#f59e0b' }} />
@@ -1234,12 +1326,12 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                           <motion.div 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="p-4 bg-[#eff6ff] rounded-[2.5rem] border-2 border-[#dbeafe]"
+                            className="p-3 sm:p-4 bg-[#eff6ff] rounded-[1.5rem] sm:rounded-[2.5rem] border-2 border-[#dbeafe]"
                             style={{ backgroundColor: '#eff6ff', borderColor: '#dbeafe' }}
                           >
-                            <div className="mb-4 flex justify-between items-center px-2">
-                              <h3 className="font-black text-[#1d4ed8] flex items-center gap-2" style={{ color: '#1d4ed8' }}>
-                                <Star className="text-[#60a5fa]" size={20} style={{ color: '#60a5fa' }} /> 漫画角色设定图
+                            <div className="mb-3 sm:mb-4 flex justify-between items-center px-1 sm:px-2">
+                              <h3 className="text-sm sm:text-base font-black text-[#1d4ed8] flex items-center gap-2" style={{ color: '#1d4ed8' }}>
+                                <Star className="text-[#60a5fa] size-4 sm:size-5" style={{ color: '#60a5fa' }} /> 漫画角色设定图
                               </h3>
                               <button 
                                 onClick={() => {
@@ -1248,17 +1340,17 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                                   a.download = `CharacterSheet_${petName}.png`;
                                   a.click();
                                 }}
-                                className="text-xs font-black text-[#60a5fa] hover:text-[#2563eb] flex items-center gap-1"
+                                className="text-[10px] sm:text-xs font-black text-[#60a5fa] hover:text-[#2563eb] flex items-center gap-1"
                                 style={{ color: '#60a5fa' }}
                                 data-html2canvas-ignore
                               >
-                                <Share2 size={14} /> 保存
+                                <Share2 size={12} className="sm:size-[14px]" /> 保存
                               </button>
                             </div>
                             <img 
                               src={designResult} 
                               alt="Character Sheet" 
-                              className="w-full rounded-2xl shadow-inner"
+                              className="w-full rounded-xl sm:rounded-2xl shadow-inner"
                               referrerPolicy="no-referrer"
                             />
                           </motion.div>
@@ -1268,14 +1360,14 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                           <motion.div 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="p-8 bg-[#fffbeb] rounded-[2.5rem] border-2 border-[#fef3c7] shadow-inner"
+                            className="p-5 sm:p-8 bg-[#fffbeb] rounded-[1.5rem] sm:rounded-[2.5rem] border-2 border-[#fef3c7] shadow-inner"
                             style={{ backgroundColor: '#fffbeb', borderColor: '#fef3c7' }}
                           >
-                            <div className="flex items-center gap-2 mb-4">
-                              <Edit3 size={18} className="text-[#f59e0b]" style={{ color: '#f59e0b' }} />
-                              <h3 className="font-black text-[#b45309]" style={{ color: '#b45309' }}>漫画剧本预览</h3>
+                            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                              <Edit3 size={16} className="text-[#f59e0b] sm:size-[18px]" style={{ color: '#f59e0b' }} />
+                              <h3 className="text-sm sm:text-base font-black text-[#b45309]" style={{ color: '#b45309' }}>漫画剧本预览</h3>
                             </div>
-                            <div className="prose prose-sm max-w-none text-[#78350f]/80 font-medium leading-relaxed" style={{ color: 'rgba(120, 53, 15, 0.8)' }}>
+                            <div className="prose prose-xs sm:prose-sm max-w-none text-[#78350f]/80 font-medium leading-relaxed" style={{ color: 'rgba(120, 53, 15, 0.8)' }}>
                               <ReactMarkdown>{comicScript}</ReactMarkdown>
                             </div>
                           </motion.div>
@@ -1285,21 +1377,29 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                           <motion.div 
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100"
+                            className="bg-white rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden border border-gray-100"
                           >
                             {/* Xiaohongshu Style Header */}
-                            <div className="p-4 flex items-center justify-between border-b border-gray-50" data-html2canvas-ignore>
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFE66D] to-[#FFD700] flex items-center justify-center text-white font-black text-xs shadow-sm">
+                            <div className="p-3 sm:p-4 flex items-center justify-between border-b border-gray-50" data-html2canvas-ignore>
+                              <div className="flex items-center gap-2 sm:gap-3">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-[#FFE66D] to-[#FFD700] flex items-center justify-center text-white font-black text-[10px] sm:text-xs shadow-sm">
                                   {petName.substring(0, 1)}
                                 </div>
                                 <div>
-                                  <h3 className="font-black text-sm text-gray-800">{petName} 的专属漫画</h3>
-                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">AI 漫画工坊 · 创作于刚才</p>
+                                  <h3 className="font-black text-xs sm:text-sm text-gray-800">{petName} 的专属漫画</h3>
+                                  <p className="text-[8px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-widest">AI 漫画工坊 · 创作于刚才</p>
                                 </div>
                               </div>
-                              <button 
-                                onClick={async () => {
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={downloadFullComic}
+                                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-[#FFE66D] text-[#2D2D2D] text-[10px] sm:text-xs font-black flex items-center gap-1.5 sm:gap-2 hover:scale-105 transition-all shadow-sm"
+                                  data-html2canvas-ignore
+                                >
+                                  <Download size={12} className="sm:size-[14px]" /> 下载全集
+                                </button>
+                                <button 
+                                  onClick={async () => {
                                   const comicElement = document.getElementById('pet-comic-container');
                                   if (comicElement) {
                                     try {
@@ -1324,14 +1424,15 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                                     }
                                   }
                                 }}
-                                className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-[#FFE66D]/10 hover:text-[#2D2D2D] transition-all"
+                                className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 hover:bg-[#FFE66D]/10 hover:text-[#2D2D2D] transition-all"
                                 data-html2canvas-ignore
                               >
-                                <Share2 size={18} />
+                                <Share2 size={16} className="sm:size-[18px]" />
                               </button>
                             </div>
-                            
-                            {/* Comic Image - Main Carousel Area */}
+                          </div>
+                          
+                          {/* Comic Image - Main Carousel Area */}
                             <div className="relative">
                               <div id="pet-comic-container" className="relative w-full aspect-square bg-white">
                                 <motion.div 
@@ -1350,33 +1451,33 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                                     />
                                   ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                                      <Loader2 className="animate-spin text-gray-200" size={48} />
+                                      <Loader2 className="animate-spin text-gray-200" size={32} />
                                     </div>
                                   )}
 
                                   {/* Page Indicator Overlay */}
-                                  <div className="absolute top-4 right-4 px-2.5 py-1 rounded-full text-[10px] font-black tracking-widest bg-black/30 backdrop-blur-md text-white border border-white/20" data-html2canvas-ignore>
+                                  <div className="absolute top-3 right-3 sm:top-4 sm:right-4 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[8px] sm:text-[10px] font-black tracking-widest bg-black/30 backdrop-blur-md text-white border border-white/20" data-html2canvas-ignore>
                                     {currentComicPage + 1} / 6
                                   </div>
 
                                   {/* Pet Card Overlay for the final panel */}
                                   {currentComicPage === 5 && (
-                                    <div className="absolute bottom-6 left-6 right-6 pointer-events-none">
+                                    <div className="absolute bottom-4 left-4 right-4 sm:bottom-6 sm:left-6 sm:right-6 pointer-events-none">
                                       <motion.div 
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: 0.5 }}
-                                        className="bg-white/80 backdrop-blur-xl p-4 rounded-3xl border border-white/50 shadow-2xl flex items-center gap-4"
+                                        className="bg-white/80 backdrop-blur-xl p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-white/50 shadow-2xl flex items-center gap-3 sm:gap-4"
                                       >
-                                        <div className="w-12 h-12 rounded-2xl bg-[#FFE66D] flex items-center justify-center shrink-0 shadow-lg shadow-[#FFE66D]/20">
-                                          <Star size={24} className="text-white" />
+                                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-[#FFE66D] flex items-center justify-center shrink-0 shadow-lg shadow-[#FFE66D]/20">
+                                          <Star size={20} className="text-white sm:size-[24px]" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                           <div className="flex items-center gap-2 mb-0.5">
-                                            <span className="text-[10px] font-black tracking-widest text-[#fb7185] uppercase">Personality Card</span>
+                                            <span className="text-[8px] sm:text-[10px] font-black tracking-widest text-[#fb7185] uppercase">Personality Card</span>
                                           </div>
-                                          <p className="text-sm font-black text-gray-800 truncate">{petName} · {resultType.code}</p>
-                                          <p className="text-[10px] font-bold text-gray-400 truncate uppercase">{personalityTitle}</p>
+                                          <p className="text-xs sm:text-sm font-black text-gray-800 truncate">{petName} · {resultType.code}</p>
+                                          <p className="text-[8px] sm:text-[10px] font-bold text-gray-400 truncate uppercase">{personalityTitle}</p>
                                         </div>
                                       </motion.div>
                                     </div>
@@ -1385,12 +1486,12 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                               </div>
 
                               {/* Navigation Dots Overlay */}
-                              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 pointer-events-none" data-html2canvas-ignore>
+                              <div className="absolute bottom-3 sm:bottom-4 left-0 right-0 flex justify-center gap-1 sm:gap-1.5 pointer-events-none" data-html2canvas-ignore>
                                 {[0, 1, 2, 3, 4, 5].map(i => (
                                   <div
                                     key={i}
-                                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                                      currentComicPage === i ? 'bg-white w-4' : 'bg-white/40'
+                                    className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full transition-all duration-300 ${
+                                      currentComicPage === i ? 'bg-white w-3 sm:w-4' : 'bg-white/40'
                                     }`}
                                   />
                                 ))}
@@ -1410,52 +1511,52 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                             </div>
 
                             {/* Xiaohongshu Style Content Area */}
-                            <div className="p-6 space-y-4">
+                            <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
                               {/* Interaction Bar */}
-                              <div className="flex items-center gap-6" data-html2canvas-ignore>
+                              <div className="flex items-center gap-4 sm:gap-6" data-html2canvas-ignore>
                                 <button className="flex flex-col items-center gap-1 group">
-                                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-red-50 group-hover:text-red-500 transition-all">
-                                    <Heart size={22} />
+                                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-red-50 group-hover:text-red-500 transition-all">
+                                    <Heart size={18} className="sm:size-[22px]" />
                                   </div>
-                                  <span className="text-[10px] font-bold text-gray-400">喜欢</span>
+                                  <span className="text-[8px] sm:text-[10px] font-bold text-gray-400">喜欢</span>
                                 </button>
                                 <button className="flex flex-col items-center gap-1 group">
-                                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">
-                                    <MessageCircle size={22} />
+                                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-blue-50 group-hover:text-blue-500 transition-all">
+                                    <MessageCircle size={18} className="sm:size-[22px]" />
                                   </div>
-                                  <span className="text-[10px] font-bold text-gray-400">评论</span>
+                                  <span className="text-[8px] sm:text-[10px] font-bold text-gray-400">评论</span>
                                 </button>
                                 <button className="flex flex-col items-center gap-1 group">
-                                  <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-yellow-50 group-hover:text-yellow-600 transition-all">
-                                    <Star size={22} />
+                                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 group-hover:bg-yellow-50 group-hover:text-yellow-600 transition-all">
+                                    <Star size={18} className="sm:size-[22px]" />
                                   </div>
-                                  <span className="text-[10px] font-bold text-gray-400">收藏</span>
+                                  <span className="text-[8px] sm:text-[10px] font-bold text-gray-400">收藏</span>
                                 </button>
                               </div>
 
                               {/* Text Content */}
-                              <div className="space-y-2">
-                                <h4 className="text-lg font-black text-gray-800 leading-tight">
+                              <div className="space-y-1.5 sm:space-y-2">
+                                <h4 className="text-base sm:text-lg font-black text-gray-800 leading-tight">
                                   {petName} 的日常：第 {currentComicPage + 1} 幕
                                 </h4>
                                 <div className="flex items-start gap-2">
                                   {parseComicScript(comicScript)[currentComicPage]?.speaker && (
-                                    <span className="shrink-0 px-2 py-0.5 rounded-md bg-[#FFE66D]/20 text-[#b45309] text-[10px] font-black uppercase tracking-widest mt-0.5">
+                                    <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[#FFE66D]/20 text-[#b45309] text-[8px] sm:text-[10px] font-black uppercase tracking-widest mt-0.5">
                                       {parseComicScript(comicScript)[currentComicPage]?.speaker}
                                     </span>
                                   )}
-                                  <p className="text-sm font-bold text-gray-600 leading-relaxed">
+                                  <p className="text-xs sm:text-sm font-bold text-gray-600 leading-relaxed">
                                     {parseComicScript(comicScript)[currentComicPage]?.text}
                                   </p>
                                 </div>
                               </div>
 
                               {/* Hashtags */}
-                              <div className="flex flex-wrap gap-2 pt-2">
-                                <span className="text-xs font-bold text-blue-500">#AI宠物漫画</span>
-                                <span className="text-xs font-bold text-blue-500">#{petType === 'dog' ? '狗狗' : '猫咪'}日常</span>
-                                <span className="text-xs font-bold text-blue-500">#MBTI{resultType.code}</span>
-                                <span className="text-xs font-bold text-blue-500">#治愈系</span>
+                              <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-1 sm:pt-2">
+                                <span className="text-[10px] sm:text-xs font-bold text-blue-500">#AI宠物漫画</span>
+                                <span className="text-[10px] sm:text-xs font-bold text-blue-500">#{petType === 'dog' ? '狗狗' : '猫咪'}日常</span>
+                                <span className="text-[10px] sm:text-xs font-bold text-blue-500">#MBTI{resultType.code}</span>
+                                <span className="text-[10px] sm:text-xs font-bold text-blue-500">#治愈系</span>
                               </div>
                             </div>
                           </motion.div>
@@ -1463,7 +1564,7 @@ NEGATIVE PROMPT: text, words, letters, numbers, symbols, watermark, signature, b
                       </div>
                     </section>
 
-                    <div className="flex gap-4 w-full">
+                    <div className="flex gap-4 w-full" data-html2canvas-ignore>
                       <button 
                         onClick={exportToImage}
                         disabled={isGeneratingPDF}
